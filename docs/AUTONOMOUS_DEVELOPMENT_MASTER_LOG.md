@@ -1,0 +1,39 @@
+# HMXPDF autonomous development master log
+
+Recovery point for autonomous phase-by-phase work. Update after every meaningful operation.
+
+## Environment and identity
+
+- Local workspace (no `.git`): `/mnt/sdcard/AIProjects/Hmxpdf` (= `/storage/emulated/0/AIProjects/Hmxpdf`)
+- Working clone: `/tmp/opencode/hmxpdf-phase1-publish`
+- Remote: https://github.com/bharti1233/Hmxpdf.git
+- Actual default branch (discovered via `git ls-remote --symref`): `release/hmxpdf-2.1.1-build`
+- CI: `.github/workflows/android.yml` — on push to the default branch: unit tests → lint → `assemblePlayDebug` → signed `assemblePlayRelease` + `bundlePlayRelease` (release environment secrets) → `release-guard`.
+
+## Phase 1 — DOCX Editing Foundation: COMPLETE (CI verified)
+
+- Pre-publication baseline preserved: branch `backup/pre-phase1-publication` @ `55007c32663c0c3e84bc76ec1abbed07e3318bc8`.
+- Publication commit: `c031c732c6d9a8dff64f4fd8b2349ef5039e5ace` (normal push to the default branch).
+  - 13 modified source/test files: DocxModel/Reader/Writer/Edits/Comments/Revisions, DocxEditorViewModel, DocxEditorScreen, plus 5 test classes.
+  - Plus docs: `docs/fresh-audit/` (14), `docs/phase1-completion/` (8), and the pre-Phase-1 audit trail.
+- Token note: the token supplied with an `app.` prefix was rejected (401); the same token without the prefix authenticated (scopes `repo`, `workflow`). Masked in all logs. Recommendation: rotate this token after use since it was pasted in plain text.
+- CI run 43934592604 (https://github.com/bharti1233/Hmxpdf/actions/runs/43934592604): **completed/success**.
+  - Jobs: build (tests+lint+debug APK) ✅, release (signed APK 134.59 MB + AAB 51.17 MB, signature verified) ✅, release-guard ✅.
+  - Debug APK artifact: `hmx-pdf-debug-apk` 170.70 MB.
+  - Test counts not published by workflow; step success recorded only.
+- Post-build audit: modified-file diff reviewed; no secrets, no dead code introduced; `DocxWriter` remains the sole DOCX writer; architecture invariants held.
+- Reports: `docs/phase1-completion/*` (8 files) and `docs/phase-completion/PHASE1_FINAL_REPORT.md`.
+- Not verified: on-device/instrumentation behavior; external Word/LibreOffice compatibility.
+
+## Phase 2 — Track Changes: NOT STARTED
+
+Next steps (STEP A audit):
+1. Read repository Phase 2 planning documents (`docs/phase2/` if present).
+2. Audit `DocxRevisions.kt`, `CharFmt.rev`, `DocxReader`/`DocxWriter` revision handling against requirements (w:ins, w:del, w:delText, display, individual accept/reject, accept/reject all, save/reopen).
+3. Identify gaps, implement, add regression tests, publish, monitor CI.
+
+## Open items / risks
+
+- Exact unit-test counts invisible to CI reporting (no JUnit XML artifact) — consider adding a test-report upload step in a later phase commit.
+- External Office compatibility fixtures still unrun.
+- Device verification requires manual install of the CI APK artifacts.
