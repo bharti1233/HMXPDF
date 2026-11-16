@@ -1321,6 +1321,35 @@ private fun DocxEditorContent(
             }
         }
 
+        // Unsaved-changes recovery (Phase 4.1): a previous session died with edits and left a
+        // committed checkpoint for this document. Recover, discard, or keep it for a later launch.
+        viewModel.pendingCheckpoint?.let { ck ->
+            val checkpointTime = remember(ck.createdAt) {
+                java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+                    .format(java.util.Date(ck.createdAt))
+            }
+            GlassDialog(
+                visible = true,
+                onDismiss = { viewModel.checkpointLater() },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_checkpoint_title),
+                actions = {
+                    GlassDialogAction(stringResource(R.string.save_recovery_discard), onClick = { viewModel.discardPendingCheckpoint() })
+                    GlassDialogAction(stringResource(R.string.docx_checkpoint_recover), onClick = { viewModel.recoverPendingCheckpoint() }, primary = true)
+                }
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BasicText(
+                        stringResource(R.string.docx_checkpoint_body, ck.displayName, checkpointTime),
+                        style = TextStyle(sub, 13.sp)
+                    )
+                    if (viewModel.pendingCheckpointStale) {
+                        BasicText(stringResource(R.string.docx_checkpoint_stale), style = TextStyle(sub, 13.sp))
+                    }
+                }
+            }
+        }
+
         // Go to page, the page counter's dialog.
         if (flat != null) {
             var pageInput by remember(showGoTo) { mutableStateOf("") }

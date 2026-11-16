@@ -961,6 +961,10 @@
     <string name="save_recovery_save_copy">حفظ نسخة</string>
     <string name="save_recovery_saved">تم حفظ النسخة المستردة</string>
     <string name="save_recovery_failed">تعذر حفظ النسخة المستردة</string>
+    <string name="docx_checkpoint_title">توجد تغييرات غير محفوظة</string>
+    <string name="docx_checkpoint_body">تعديلات %1$s من %2$s لم تُحفظ. هل تريد استعادتها؟</string>
+    <string name="docx_checkpoint_stale">تغيّر الملف الأصلي بعد إنشاء هذه النقطة.</string>
+    <string name="docx_checkpoint_recover">استعادة</string>
     <string name="docx_share_failed">تعذر تجهيز المستند المعدل للمشاركة</string>
     <string name="docx_replace_hint">استبدال بـ…</string>
     <string name="docx_replace_one">استبدال</string>

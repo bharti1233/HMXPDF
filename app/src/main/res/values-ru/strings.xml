@@ -991,6 +991,10 @@
     <string name="save_recovery_save_copy">Сохранить копию</string>
     <string name="save_recovery_saved">Восстановленная копия сохранена</string>
     <string name="save_recovery_failed">Не удалось сохранить восстановленную копию</string>
+    <string name="docx_checkpoint_title">Несохранённые изменения</string>
+    <string name="docx_checkpoint_body">Правки документа %1$s от %2$s не были сохранены. Восстановить их?</string>
+    <string name="docx_checkpoint_stale">Исходный файл изменился после создания этой контрольной точки.</string>
+    <string name="docx_checkpoint_recover">Восстановить</string>
     <string name="docx_share_failed">Не удалось подготовить изменённый документ к отправке</string>
     <string name="docx_replace_hint">Заменить на…</string>
     <string name="docx_replace_one">Заменить</string>

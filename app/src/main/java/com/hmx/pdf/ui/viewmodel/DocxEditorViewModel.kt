@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hmx.pdf.data.repository.AutosaveCoordinator
+import com.hmx.pdf.data.repository.EditorCheckpointStore
 import com.hmx.pdf.data.repository.LocalDocumentMirror
 import com.hmx.pdf.data.repository.RecentFile
 import com.hmx.pdf.data.repository.RecentFilesManager
@@ -32,6 +34,8 @@ import com.hmx.pdf.docx.forEachPara
 import com.hmx.pdf.docx.mapContainerOf
 import com.hmx.pdf.docx.replacePara
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -127,6 +131,7 @@ class DocxEditorViewModel : ViewModel() {
         pkg = parsed.first; doc = parsed.second; saved = parsed.second; original = parsed.second
         testFileMirror = true
         resetPageLayoutExtras()
+        resetAutosave()
     }
 
     /**
@@ -191,6 +196,19 @@ class DocxEditorViewModel : ViewModel() {
             original = parsed.second
             meta = Meta(fileName = name, fileUri = local, sourceUri = uri, isLoading = false)
             resetPageLayoutExtras()
+            appContext = context.applicationContext
+            originalHash = withContext(Dispatchers.IO) {
+                val mirror = local.takeIf { it.scheme == "file" }?.path?.let(::File)
+                if (mirror?.isFile == true) runCatching { EditorCheckpointStore.sha256(mirror) }.getOrNull() else null
+            }
+            // A previous session may have died with unsaved edits for this document: offer the
+            // last committed checkpoint (recovery happens on this launch or a later one).
+            val found = withContext(Dispatchers.IO) {
+                runCatching { EditorCheckpointStore.find(context, uri.toString()) }.getOrNull()
+            }
+            pendingCheckpoint = found
+            pendingCheckpointStale = found != null && found.originalHash.isNotEmpty() &&
+                originalHash != null && found.originalHash != originalHash
             withContext(Dispatchers.IO) {
                 runCatching {
                     RecentFilesManager.addRecent(context, RecentFile(name = name, uriString = uri.toString(), timestamp = System.currentTimeMillis()))
@@ -249,6 +267,7 @@ class DocxEditorViewModel : ViewModel() {
         doc = next
         canUndo = undoStack.isNotEmpty()
         canRedo = false
+        scheduleCheckpoint()
     }
 
     /** Ends typing coalescing, so the next keystroke starts a new undo step. */
@@ -262,6 +281,7 @@ class DocxEditorViewModel : ViewModel() {
         lastKey = null
         canUndo = undoStack.isNotEmpty(); canRedo = true
         restoreEpoch++
+        scheduleCheckpoint()
     }
 
     fun redo() {
@@ -272,7 +292,133 @@ class DocxEditorViewModel : ViewModel() {
         lastKey = null
         canUndo = true; canRedo = redoStack.isNotEmpty()
         restoreEpoch++
+        scheduleCheckpoint()
     }
+
+    // ── autosave checkpoints (Phase 4.1) ───────────────────────────────────────
+
+    /**
+     * The application context (set once per load), which lets checkpoint writes run without an
+     * Activity. Null in JVM tests, which is also what disables autosave scheduling there — the
+     * coordinator and store carry their own deterministic tests.
+     */
+    private var appContext: Context? = null
+    /** The opened destination's hash (its local mirror): recovery's stale-original label. */
+    private var originalHash: String? = null
+    private val autosave = AutosaveCoordinator()
+    private var autosaveJob: Job? = null
+    private var checkpointJob: Job? = null
+    /** The session fingerprint the last committed checkpoint captured (reference-compared). */
+    private var lastCheckpointFp: SessionSnap? = null
+
+    /** A checkpoint found for this document at load (or offered for later): recover/discard/later. */
+    var pendingCheckpoint by mutableStateOf<EditorCheckpointStore.Checkpoint?>(null)
+        private set
+    /** True when the destination changed since the pending checkpoint was taken. */
+    var pendingCheckpointStale by mutableStateOf(false)
+        private set
+
+    private fun resetAutosave() {
+        autosave.onSaved(); autosaveJob?.cancel(); checkpointJob?.cancel()
+        autosaveJob = null; checkpointJob = null; lastCheckpointFp = null
+        pendingCheckpoint = null; pendingCheckpointStale = false
+    }
+
+    /** Dirty state changed: (re)schedule the debounced checkpoint per the coordinator. */
+    private fun scheduleCheckpoint() {
+        val context = appContext ?: return
+        val delayMs = autosave.touch(System.currentTimeMillis(), dirty)
+        if (delayMs == AutosaveCoordinator.NONE) return
+        autosaveJob?.cancel()
+        autosaveJob = viewModelScope.launch {
+            delay(delayMs)
+            writeCheckpoint(context)
+        }
+    }
+
+    /**
+     * One checkpoint write of one captured generation (the same [SaveCapture] discipline as
+     * [save]): writes a complete package through the sole writer into the checkpoint store.
+     * Edits during the write coalesce into one follow-up ([AutosaveCoordinator.endWrite]); the
+     * running write is never cancelled by continued typing.
+     */
+    private fun writeCheckpoint(context: Context) {
+        if (checkpointJob?.isActive == true) return
+        val cap = saveCapture() ?: return
+        val fp = snap()
+        if (unchangedSinceCheckpoint(fp)) { lastCheckpointFp = fp; return }
+        if (!autosave.beginWrite()) return
+        checkpointJob = viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val patched = buildPatched(context, cap) ?: return@runCatching false
+                    try {
+                        EditorCheckpointStore.commit(
+                            context = context,
+                            sourceUri = meta.sourceUri?.toString(),
+                            displayName = meta.fileName,
+                            kind = "docx",
+                            complete = patched,
+                            originalHash = originalHash
+                        ) != null
+                    } finally {
+                        patched.delete()
+                    }
+                }.getOrDefault(false)
+            }
+            if (ok) lastCheckpointFp = fp
+            val followUp = autosave.endWrite(System.currentTimeMillis())
+            if (followUp != AutosaveCoordinator.NONE) {
+                autosaveJob?.cancel()
+                autosaveJob = launch { delay(followUp); writeCheckpoint(context) }
+            }
+        }
+    }
+
+    /** Reference comparison against the checkpointed generation: cheap necessity check. */
+    private fun unchangedSinceCheckpoint(fp: SessionSnap): Boolean {
+        val last = lastCheckpointFp ?: return false
+        return fp.body === last.body && fp.settings === last.settings &&
+            fp.settingsChanged == last.settingsChanged &&
+            fp.hf.size == last.hf.size && fp.relIds.size == last.relIds.size &&
+            fp.hf.all { (k, v) -> last.hf[k] === v } &&
+            fp.relIds.all { (k, v) -> last.relIds[k] === v }
+    }
+
+    /** Uses the last committed checkpoint as the current document (recovery offer → Recover). */
+    fun recoverPendingCheckpoint() {
+        val ck = pendingCheckpoint ?: return
+        val context = appContext ?: return
+        viewModelScope.launch {
+            val parsed = withContext(Dispatchers.IO) {
+                runCatching { ck.file.inputStream().use { DocxReader.read(it) } }.getOrNull()
+            }
+            pendingCheckpoint = null
+            val (p, d) = parsed ?: return@launch
+            pkg = p
+            doc = d
+            // The destination never received these edits: dirty against the opened original, so
+            // a save is still required — never a false clean state. Undo restarts (roadmap).
+            saved = original
+            resetPageLayoutExtras()
+            restoreEpoch++
+            lastCheckpointFp = null
+            autosave.onSaved()
+        }
+    }
+
+    /** Deletes the pending checkpoint (recovery offer → Discard). */
+    fun discardPendingCheckpoint() {
+        val ck = pendingCheckpoint ?: return
+        pendingCheckpoint = null
+        val context = appContext ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { EditorCheckpointStore.clear(context, ck.originalUri) }
+        }
+    }
+
+    /** Keeps the checkpoint on disk; the next open of this document offers it again. */
+    fun checkpointLater() { pendingCheckpoint = null }
 
     fun para(id: Long): DocPara? = doc?.let { findPara(it.blocks, id) }
 
@@ -618,6 +764,7 @@ class DocxEditorViewModel : ViewModel() {
             wantSettings = DocxPageLayout.withEvenOdd(current, false)
         }
         lastKey = null
+        scheduleCheckpoint()
     }
 
     fun evenOddHeaders(): Boolean = DocxPageLayout.hasEvenOdd(wantSettings ?: pkg?.settings)
@@ -689,6 +836,7 @@ class DocxEditorViewModel : ViewModel() {
         val base = hfChanged[path] ?: hfCache.getOrPut(path) { parseHf(path) }
         val next = DocState(replacePara(base.blocks, np) ?: return)
         hfChanged[path] = next
+        scheduleCheckpoint()
     }
 
     /** Creates a brand-new header/footer part and references it on [section]; returns its path. */
@@ -706,6 +854,7 @@ class DocxEditorViewModel : ViewModel() {
         val id = freeRelId()
         hfRelIds[path] = id
         commitSect(section) { fresh -> DocxPageLayout.withReference(fresh, header, variant, id) }
+        scheduleCheckpoint()
         return path
     }
 
@@ -720,6 +869,7 @@ class DocxEditorViewModel : ViewModel() {
         if (DocxPageLayout.sections(d).any { it.sectPr.contains("r:id=\"$rid\"") }) return
         val path = hfRelIds.entries.firstOrNull { it.value == rid }?.key ?: hfPathOf(rid)
         if (path != null) { hfChanged.remove(path); hfRelIds.remove(path) }
+        scheduleCheckpoint()
     }
 
     private fun freeRelId(): String {
@@ -784,6 +934,19 @@ class DocxEditorViewModel : ViewModel() {
         packageSavedSettings = capture.extras.settings ?: capture.pkg.settings
         packageSavedHf.clear()
         packageSavedHf.putAll(capture.extras.hfSave)
+        // The destination now holds this generation: the checkpoint's purpose is served. Stop
+        // scheduling and drop the stored checkpoint — a recovered copy must never outlive the
+        // successful save it was protecting.
+        val context = appContext
+        val key = meta.sourceUri?.toString()
+        lastCheckpointFp = null
+        autosave.onSaved()
+        autosaveJob?.cancel(); autosaveJob = null
+        if (context != null && key != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                runCatching { EditorCheckpointStore.clear(context, key) }
+            }
+        }
     }
 
     /** Legacy test seam: record the current session state as saved. */

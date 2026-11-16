@@ -984,6 +984,10 @@
     <string name="save_recovery_save_copy">Salvar uma cópia</string>
     <string name="save_recovery_saved">Cópia de recuperação salva</string>
     <string name="save_recovery_failed">Não foi possível salvar a cópia de recuperação</string>
+    <string name="docx_checkpoint_title">Alterações não salvas</string>
+    <string name="docx_checkpoint_body">As edições de %1$s de %2$s não foram salvas. Recuperá-las?</string>
+    <string name="docx_checkpoint_stale">O arquivo original mudou depois que este ponto de verificação foi criado.</string>
+    <string name="docx_checkpoint_recover">Recuperar</string>
     <string name="docx_share_failed">Não foi possível preparar o documento editado para compartilhar</string>
     <string name="docx_replace_hint">Substituir por…</string>
     <string name="docx_replace_one">Substituir</string>

@@ -861,6 +861,10 @@
     <string name="save_recovery_save_copy">Save a copy</string>
     <string name="save_recovery_saved">Recovered copy saved</string>
     <string name="save_recovery_failed">Couldn\'t save the recovered copy</string>
+    <string name="docx_checkpoint_title">Unsaved changes found</string>
+    <string name="docx_checkpoint_body">Edits of %1$s from %2$s weren\'t saved. Recover them?</string>
+    <string name="docx_checkpoint_stale">The original file changed after this checkpoint was taken.</string>
+    <string name="docx_checkpoint_recover">Recover</string>
     <string name="docx_saved">Saved</string>
     <string name="docx_save_failed">Couldn\'t save the document</string>
     <string name="docx_share_failed">Couldn\'t prepare the edited document to share</string>
