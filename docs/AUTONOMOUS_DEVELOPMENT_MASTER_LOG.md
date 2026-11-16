@@ -33,9 +33,17 @@ Recovery point for autonomous phase-by-phase work. Update after every meaningful
 - Report: `docs/phase-completion/PHASE2_FINAL_REPORT.md`.
 - Not verified: on-device panel review; external Word/LibreOffice handling of emitted wrappers.
 
-## Phase 3 — Page Layout and Page Setup: IN AUDIT
+## Phase 3 — Page Layout and Page Setup: COMPLETE (CI verified)
 
-Next steps (STEP A): read `docs/phase3/` documents; audit `DocxPageLayout.kt`, header/footer support, page-size/margin/orientation/break handling in reader/writer/UI; identify gaps vs the approved plan; then implement/repair as needed.
+- Re-verified against source: `DocxPageLayout` (sections, orientation/sizes/margins/gutter, titlePg, section-break insert/type, HF references, even/odd settings splice), VM ops (`setSectionSetup`, `commitSect` rebase, HF editing with stable-id cache), `DocPanel.LAYOUT` panel UI, `DocxPageLayoutTest` (18 round-trip tests) — green in run 43934592604.
+- Rejected experimental direct-manipulation UI was not reintroduced.
+- Report: `docs/phase-completion/PHASE3_FINAL_REPORT.md`.
+
+## Phase 4 — Advanced Document Editing: PLANNING BASIS RESOLVED
+
+- The five Phase 4 planning documents named in the work order (`PHASE4_AUDIT_REPORT.md`, `PHASE4_FEATURE_GAP_ANALYSIS.md`, `PHASE4_IMPLEMENTATION_MASTER_PLAN.md`, `PHASE4_IMPLEMENTATION_ROADMAP.md`, `PHASE4_TECHNICAL_ARCHITECTURE.md`) **do not exist** in the repository (`docs/phase4/` absent).
+- Approved scope source instead: `docs/fresh-audit/HMXPDF_MASTER_IMPLEMENTATION_ROADMAP.md` (Phase 4.0–4.6 sequence with gates) + `docs/fresh-audit/HMXPDF_FEATURE_GAP_ANALYSIS.md`. No additional scope will be invented.
+- Sequence: 4.0 foundation → 4.1 autosave/recovery → 4.2 advanced tables → 4.4 footnotes/endnotes → 4.3 spell checking → 4.5 read aloud → 4.6 integration/regression.
 
 ## Open items / risks
 
