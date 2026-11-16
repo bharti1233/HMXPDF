@@ -2,6 +2,7 @@ package com.hmx.pdf.docx
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -108,12 +109,19 @@ class DocxHeaderFooterIntegrityTest {
         val (_, state) = DocxFixtures.read(bytes)
         val paras = mutableListOf<DocPara>()
         forEachPara(state.blocks, includePreview = false) { paras.add(it) }
-        val alpha = paras[0]; val terminatorA = paras[1]; val beta = paras[2]
-        assertEquals(2, DocxPageLayout.sections(state).size)
+        val alpha = paras[0]; val terminatorA = paras[1]; val beta = paras[2]; val terminatorB = paras[3]
+        // Two paragraph-terminated sections plus the trailing body-level sectPr entry that
+        // sections() always appends (the established Phase 3 model).
+        val sections = DocxPageLayout.sections(state)
+        assertEquals(3, sections.size)
+        assertEquals(terminatorA.id, sections[0].paraId)
+        assertEquals(terminatorB.id, sections[1].paraId)
+        assertNull(sections[2].paraId)
+        assertNotNull(sections[2].rawId)
         assertEquals(terminatorA.id, DocxPageLayout.sectionAt(state, alpha.id).paraId)
         // The FA-22 fix: the terminator itself is inside the section it terminates.
         assertEquals(terminatorA.id, DocxPageLayout.sectionAt(state, terminatorA.id).paraId)
-        assertEquals(beta.id, DocxPageLayout.sectionAt(state, beta.id).paraId)
+        assertEquals(terminatorB.id, DocxPageLayout.sectionAt(state, beta.id).paraId)
         assertNull(DocxPageLayout.sectionAt(state, beta.id).rawId)
     }
 }
