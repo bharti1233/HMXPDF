@@ -312,7 +312,7 @@ class DocxEditorViewModel : ViewModel() {
     private var lastCheckpointFp: SessionSnap? = null
 
     /** A checkpoint found for this document at load (or offered for later): recover/discard/later. */
-    var pendingCheckpoint by mutableStateOf<EditorCheckpointStore.Checkpoint?>(null)
+    internal var pendingCheckpoint by mutableStateOf<EditorCheckpointStore.Checkpoint?>(null)
         private set
     /** True when the destination changed since the pending checkpoint was taken. */
     var pendingCheckpointStale by mutableStateOf(false)
