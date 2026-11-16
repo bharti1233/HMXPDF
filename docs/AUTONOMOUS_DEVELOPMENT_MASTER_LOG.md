@@ -25,12 +25,17 @@ Recovery point for autonomous phase-by-phase work. Update after every meaningful
 - Reports: `docs/phase1-completion/*` (8 files) and `docs/phase-completion/PHASE1_FINAL_REPORT.md`.
 - Not verified: on-device/instrumentation behavior; external Word/LibreOffice compatibility.
 
-## Phase 2 — Track Changes: NOT STARTED
+## Phase 2 — Track Changes: COMPLETE (CI verified)
 
-Next steps (STEP A audit):
-1. Read repository Phase 2 planning documents (`docs/phase2/` if present).
-2. Audit `DocxRevisions.kt`, `CharFmt.rev`, `DocxReader`/`DocxWriter` revision handling against requirements (w:ins, w:del, w:delText, display, individual accept/reject, accept/reject all, save/reopen).
-3. Identify gaps, implement, add regression tests, publish, monitor CI.
+- Re-verified against source at `c031c73` (not trusting the phase reports): reader parses `w:ins`/`w:del`/`w:delText` into per-char `Rev` flags; writer emits `w:ins`/`w:del` wrappers + `w:delText`; `DocxRevisions.accept/reject/acceptAll/rejectAll` present; VM `tracking`/`pendingRevisions`/`resolveRevision`/`resolveAllRevisions` present; `DocPanel.REVISIONS` panel with Track toggle and accept/reject-all actions present.
+- Tests: `DocxRevisionsTest` (24 `@Test`) + `DocxTrackingStateTest` (9 `@Test`) — green in run 43934592604 (head `c031c73`).
+- Debug + signed release APK/AAB artifacts for the same commit verified.
+- Report: `docs/phase-completion/PHASE2_FINAL_REPORT.md`.
+- Not verified: on-device panel review; external Word/LibreOffice handling of emitted wrappers.
+
+## Phase 3 — Page Layout and Page Setup: IN AUDIT
+
+Next steps (STEP A): read `docs/phase3/` documents; audit `DocxPageLayout.kt`, header/footer support, page-size/margin/orientation/break handling in reader/writer/UI; identify gaps vs the approved plan; then implement/repair as needed.
 
 ## Open items / risks
 
