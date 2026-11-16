@@ -36,7 +36,8 @@ class SaveRecoveryCoreTest {
         return bos.toByteArray()
     }
 
-    private fun newRoot(): File = createTempDir("recovery-root").apply { deleteOnExit() }
+    private fun newRoot(): File =
+        java.nio.file.Files.createTempDirectory("recovery-root").toFile().apply { deleteOnExit() }
 
     private fun prepared(text: String): File =
         File.createTempFile("prepared", ".docx").apply { writeBytes(docx(text)); deleteOnExit() }
