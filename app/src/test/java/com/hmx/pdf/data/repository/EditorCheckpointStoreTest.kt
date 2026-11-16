@@ -102,7 +102,7 @@ class EditorCheckpointStoreTest {
         val ck = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"), null)!!
         ck.file.writeBytes(ck.file.readBytes().copyOfRange(0, 10)) // truncate: hash no longer matches
         assertNull(EditorCheckpointStore.find(r, "content://doc/1"))
-        assertEquals(0, ck.directory.listFiles()!!.size) // unusable leftovers removed
+        assertFalse(ck.directory.exists()) // unusable leftovers removed entirely
     }
 
     @Test
