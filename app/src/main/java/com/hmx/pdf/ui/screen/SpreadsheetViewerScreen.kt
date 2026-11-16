@@ -912,6 +912,26 @@ private fun SpreadsheetViewerContent(
             accent = accent
         )
 
+        // Checkpoint recovery (Phase 4.1): a previous session died with unsaved edits here.
+        viewModel.pendingCheckpoint?.let { ck ->
+            val checkpointTime = remember(ck.createdAt) {
+                java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+                    .format(java.util.Date(ck.createdAt))
+            }
+            UnsavedChangesDialog(
+                visible = true,
+                onDiscard = { viewModel.discardPendingCheckpoint() },
+                onCancel = { viewModel.checkpointLater() },
+                onSave = { viewModel.recoverPendingCheckpoint() },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_checkpoint_title),
+                body = stringResource(R.string.docx_checkpoint_body, ck.displayName, checkpointTime) +
+                    if (viewModel.pendingCheckpointStale) "\n" + stringResource(R.string.docx_checkpoint_stale) else "",
+                saveLabel = stringResource(R.string.docx_checkpoint_recover),
+                accent = accent
+            )
+        }
+
         GlassGuideCallout(
             visible = showSpreadsheetTour && !editMode && sheet != null,
             title = stringResource(R.string.tour_sheet_title),

@@ -2,8 +2,13 @@ package com.hmx.pdf.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hmx.pdf.data.repository.AutosaveCoordinator
+import com.hmx.pdf.data.repository.EditorCheckpointStore
 import com.hmx.pdf.data.repository.LocalDocumentMirror
 import com.hmx.pdf.data.repository.RecentFile
 import com.hmx.pdf.data.repository.RecentFilesManager
@@ -24,6 +29,8 @@ import com.hmx.pdf.utils.xlsx.XlsxSheet
 import com.hmx.pdf.utils.xlsx.XlsxWorkbook
 import com.hmx.pdf.utils.xlsx.XlsxWriter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -72,6 +79,21 @@ class SpreadsheetViewModel : ViewModel() {
     /** `applied.size` at the last save, or -1 when that state is no longer reachable by undo. */
     private var savedAt = 0
 
+    // ── autosave checkpoints (Phase 4.1): same discipline as the DOCX editor ──
+
+    private var appContext: Context? = null
+    private var originalHash: String? = null
+    private val autosave = AutosaveCoordinator()
+    private var autosaveJob: Job? = null
+    private var checkpointJob: Job? = null
+    /** `applied.size` the last committed checkpoint captured (the op log is the whole delta). */
+    private var lastCheckpointedOps = -1
+
+    internal var pendingCheckpoint by mutableStateOf<EditorCheckpointStore.Checkpoint?>(null)
+        private set
+    internal var pendingCheckpointStale by mutableStateOf(false)
+        private set
+
     fun load(context: Context, uri: Uri, nameHint: String? = null) {
         if (started) return
         started = true
@@ -107,6 +129,19 @@ class SpreadsheetViewModel : ViewModel() {
             } else {
                 UiState(fileName = name, fileUri = localUri, sourceUri = uri, workbook = wb, isLoading = false)
             }
+            appContext = context.applicationContext
+            originalHash = withContext(Dispatchers.IO) {
+                val mirror = localUri.takeIf { it.scheme == "file" }?.path?.let(::File)
+                if (mirror?.isFile == true) runCatching { EditorCheckpointStore.sha256(mirror) }.getOrNull() else null
+            }
+            // A previous session may have died with unsaved edits for this spreadsheet.
+            val found = withContext(Dispatchers.IO) {
+                runCatching { EditorCheckpointStore.find(context, uri.toString()) }.getOrNull()
+            }
+            pendingCheckpoint = found
+            pendingCheckpointStale = found != null && found.originalHash.isNotEmpty() &&
+                originalHash != null && found.originalHash != originalHash
+            if (found != null) lastCheckpointedOps = Int.MIN_VALUE // stale: never reuse across sessions
             if (wb != null) withContext(Dispatchers.IO) {
                 runCatching {
                     RecentFilesManager.addRecent(
@@ -150,6 +185,7 @@ class SpreadsheetViewModel : ViewModel() {
         // No cap: the writer replays this whole list onto the pristine file, so dropping the
         // oldest op would silently drop it from the saved workbook too.
         publish()
+        scheduleCheckpoint()
     }
 
     private fun publish() {
@@ -167,6 +203,7 @@ class SpreadsheetViewModel : ViewModel() {
         XlsxEdits.revert(wb, op)
         redoStack.add(op)
         publish()
+        scheduleCheckpoint()
     }
 
     fun redo() {
@@ -175,7 +212,94 @@ class SpreadsheetViewModel : ViewModel() {
         XlsxEdits.apply(wb, op)
         applied.add(op)
         publish()
+        scheduleCheckpoint()
     }
+
+    // ── checkpoint pipeline (mirrors the DOCX editor's; ops are the whole delta) ──
+
+    private fun resetAutosave() {
+        autosave.onSaved(); autosaveJob?.cancel(); checkpointJob?.cancel()
+        autosaveJob = null; checkpointJob = null; lastCheckpointedOps = -1
+        pendingCheckpoint = null; pendingCheckpointStale = false
+    }
+
+    private fun scheduleCheckpoint() {
+        val context = appContext ?: return
+        val st = _state.value
+        if (!st.dirty || st.workbook?.editable != true) return
+        val delayMs = autosave.touch(System.currentTimeMillis(), dirty = true)
+        if (delayMs == AutosaveCoordinator.NONE) return
+        autosaveJob?.cancel()
+        autosaveJob = viewModelScope.launch {
+            delay(delayMs)
+            writeCheckpoint(context)
+        }
+    }
+
+    private fun writeCheckpoint(context: Context) {
+        if (checkpointJob?.isActive == true) return
+        val st = _state.value
+        if (applied.size == lastCheckpointedOps) return
+        if (!autosave.beginWrite()) return
+        val ops = applied.size
+        checkpointJob = viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val patched = buildPatched(context) ?: return@runCatching false
+                    try {
+                        EditorCheckpointStore.commit(
+                            context = context,
+                            sourceUri = st.sourceUri?.toString(),
+                            displayName = st.fileName,
+                            kind = "xlsx",
+                            complete = patched,
+                            originalHash = originalHash
+                        ) != null
+                    } finally {
+                        patched.delete()
+                    }
+                }.getOrDefault(false)
+            }
+            if (ok) lastCheckpointedOps = ops
+            val followUp = autosave.endWrite(System.currentTimeMillis())
+            if (followUp != AutosaveCoordinator.NONE) {
+                autosaveJob?.cancel()
+                autosaveJob = launch { delay(followUp); writeCheckpoint(context) }
+            }
+        }
+    }
+
+    /** Uses the last committed checkpoint as the current workbook (recovery offer → Recover). */
+    fun recoverPendingCheckpoint() {
+        val ck = pendingCheckpoint ?: return
+        viewModelScope.launch {
+            val parsed = withContext(Dispatchers.IO) {
+                runCatching { ck.file.inputStream().use { XlsxReader.read(it) } }.getOrNull()
+            }
+            pendingCheckpoint = null
+            if (parsed == null || !parsed.sheets.any { !it.hidden }) return@launch
+            _state.value = _state.value.copy(workbook = parsed, error = null)
+            // The checkpoint holds the whole edited state: the op log restarts, and the
+            // destination never received these edits — dirty forever until a real save.
+            applied.clear(); redoStack.clear(); savedAt = -1
+            publish()
+            autosave.onSaved()
+            lastCheckpointedOps = 0
+        }
+    }
+
+    /** Deletes the pending checkpoint (recovery offer → Discard). */
+    fun discardPendingCheckpoint() {
+        val ck = pendingCheckpoint ?: return
+        pendingCheckpoint = null
+        val context = appContext ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { EditorCheckpointStore.clear(context, ck.originalUri) }
+        }
+    }
+
+    /** Keeps the checkpoint on disk; the next open of this spreadsheet offers it again. */
+    fun checkpointLater() { pendingCheckpoint = null }
 
     /** Commit typed text into a cell; empty text clears the value but keeps its formatting. */
     fun setCellText(sheet: Int, r: Int, c: Int, text: String) {
@@ -321,6 +445,17 @@ class SpreadsheetViewModel : ViewModel() {
             if (result is SaveResult.Saved) {
                 savedAt = applied.size
                 publish()
+                // The destination now holds this generation: stop checkpointing and drop the
+                // stored checkpoint (it must never outlive the save it was protecting).
+                lastCheckpointedOps = applied.size
+                autosave.onSaved()
+                autosaveJob?.cancel(); autosaveJob = null
+                val ctx = appContext; val key = st.sourceUri?.toString()
+                if (ctx != null && key != null) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        runCatching { EditorCheckpointStore.clear(ctx, key) }
+                    }
+                }
             }
             onDone(result)
         }
