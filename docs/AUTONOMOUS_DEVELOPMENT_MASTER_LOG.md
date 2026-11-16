@@ -39,11 +39,27 @@ Recovery point for autonomous phase-by-phase work. Update after every meaningful
 - Rejected experimental direct-manipulation UI was not reintroduced.
 - Report: `docs/phase-completion/PHASE3_FINAL_REPORT.md`.
 
-## Phase 4 — Advanced Document Editing: PLANNING BASIS RESOLVED
+## Phase 4 — Advanced Document Editing: 4.0 COMPLETE (CI verified)
 
-- The five Phase 4 planning documents named in the work order (`PHASE4_AUDIT_REPORT.md`, `PHASE4_FEATURE_GAP_ANALYSIS.md`, `PHASE4_IMPLEMENTATION_MASTER_PLAN.md`, `PHASE4_IMPLEMENTATION_ROADMAP.md`, `PHASE4_TECHNICAL_ARCHITECTURE.md`) **do not exist** in the repository (`docs/phase4/` absent).
-- Approved scope source instead: `docs/fresh-audit/HMXPDF_MASTER_IMPLEMENTATION_ROADMAP.md` (Phase 4.0–4.6 sequence with gates) + `docs/fresh-audit/HMXPDF_FEATURE_GAP_ANALYSIS.md`. No additional scope will be invented.
-- Sequence: 4.0 foundation → 4.1 autosave/recovery → 4.2 advanced tables → 4.4 footnotes/endnotes → 4.3 spell checking → 4.5 read aloud → 4.6 integration/regression.
+Planning basis: `docs/fresh-audit/HMXPDF_MASTER_IMPLEMENTATION_ROADMAP.md` + `HMXPDF_FEATURE_GAP_ANALYSIS.md` (+ FA register `HMXPDF_BUGS_AND_TECHNICAL_DEBT.md`). The five named `docs/phase4/*.md` planning docs do not exist; scope limited to the approved docs — no invention.
+
+### Phase 4.0 — Foundation: COMPLETE
+
+Commits (normal pushes): `c8816c2` (implementation) → repairs `632d9d5` (2 compile errors: `SaveRecovery.begin(root,…)` context seam, `currentFile` capture), `bf9dabd` (`createTempDir` deprecated-at-ERROR in test code; unused import), `9463b53` (test-only: `sections()` terminal-entry model). Final: run 43943430785 — **success** (tests 0 failures / 42 pre-existing skips, lint, debug APK 170.70 MB, signed release APK 134.59 MB + AAB 51.17 MB, release-guard).
+
+- FA-03: HF envelope preservation (`hfEnvelopes` VM capture → `Extras` → `hfXml` re-emits original root start tag).
+- FA-04: `saveCapture()` immutable generation; writer + `recordSaved(capture)` consume exactly it; share/export path too.
+- FA-05: `SessionSnap` package-inclusive undo/redo (HF parts, rel claims, envelopes, settings).
+- FA-06: `hfPathOf` resolves session-created parts first.
+- FA-22: `CT_OnOff` val-aware `titlePg`/`hasEvenOdd`; inclusive `sectionAt`.
+- Recovery: `SaveRecovery` pure core JVM-tested (`SaveRecoveryCoreTest`, 6 tests) replacing the empty `@Ignore`d `SaveRecoverySameUriTest`.
+- Shared `DocxFixtures`; 16 new tests total. Post-build audit clean (built commit = remote head; diff scope exact; no secrets/placeholders; sole-writer invariant held).
+
+Report: `docs/phase-completion/PHASE4_FINAL_REPORT.md`.
+
+## Phase 4.1 — Autosave and Recovery: NEXT
+
+Next steps (STEP A): read the roadmap §4.1 + gap-analysis "Autosave and recovery"; audit existing autosave/recovery seams (`SaveRecovery` usage, VM save path, lifecycle); identify gaps; implement with tests; publish; monitor CI.
 
 ## Open items / risks
 
