@@ -19,6 +19,9 @@ data class CharFmt(val rPr: String, val link: String? = null, val obj: String? =
 @Immutable
 data class Rev(val ins: Boolean, val id: Int)
 
+@Immutable
+data class DocMarker(val xml: String, val offset: Int)
+
 /** U+FFFC stands for an object run inside [DocPara.text]. */
 const val OBJ_CHAR = '\uFFFC'
 
@@ -48,7 +51,8 @@ class DocPara(
      */
     val marks: List<Int> = emptyList(),
     /** Author/date of every tracked change in this paragraph, by revision id (`w:id`). */
-    val revs: Map<Int, RevMeta> = emptyMap()
+    val revs: Map<Int, RevMeta> = emptyMap(),
+    val markers: List<DocMarker> = emptyList()
 ) : DocBlock {
     fun edited(
         text: String = this.text,
@@ -58,8 +62,11 @@ class DocPara(
         openTag: String = this.openTag,
         extras: String = this.extras,
         marks: List<Int> = this.marks,
-        revs: Map<Int, RevMeta> = this.revs
-    ): DocPara = DocPara(id, null, openTag, pPr, extras, text, fmts, editable, marks.filter { it in 0..text.length }, revs)
+        revs: Map<Int, RevMeta> = this.revs,
+        markers: List<DocMarker> = this.markers
+    ): DocPara = DocPara(id, null, openTag, pPr, extras, text, fmts, editable,
+        marks.filter { it in 0..text.length }, revs,
+        markers.map { it.copy(offset = it.offset.coerceIn(0, text.length)) })
 
     val isEmpty: Boolean get() = text.isEmpty()
 }

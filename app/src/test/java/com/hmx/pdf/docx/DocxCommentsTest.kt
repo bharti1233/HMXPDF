@@ -88,7 +88,7 @@ class DocxCommentsTest {
         assertEquals("First note", items[0].text)
         val p = paras(state)[0]
         assertEquals("hello$OBJ_CHAR", p.text)
-        assertTrue(p.extras.contains("commentRangeStart"))
+        assertTrue(p.markers.any { it.xml.contains("commentRangeStart") && it.offset == 0 })
         assertTrue(p.fmts.last().obj!!.contains("commentReference w:id=\"1\""))
     }
 
@@ -108,7 +108,7 @@ class DocxCommentsTest {
         assertEquals(1, items.size)
         assertEquals("a note", items[0].text)
         val p2 = paras(state2)[0]
-        assertTrue(p2.extras.contains("commentRangeStart w:id=\"$id\""))
+        assertTrue(p2.markers.any { it.xml.contains("commentRangeStart w:id=\"$id\"") && it.offset == 0 })
         assertEquals("plain$OBJ_CHAR", p2.text)
     }
 
@@ -124,7 +124,7 @@ class DocxCommentsTest {
         assertTrue(pkg2.comments.items.isEmpty())
         val p = paras(state2)[0]
         assertEquals("hello", p.text)
-        assertFalse(p.extras.contains("commentRange"))
+        assertFalse(p.markers.any { it.xml.contains("commentRange") })
         assertFalse(entry(out, "word/document.xml")!!.contains("commentReference"))
     }
 
@@ -148,8 +148,8 @@ class DocxCommentsTest {
         val id2 = pkg.comments.add("HMXPDF", "H", "2026-01-02T00:00:00Z", "second")
         val both = DocxComments.anchorPara(p, id2)
         // The original anchor is intact, and stripping the new one restores the paragraph.
-        assertTrue(both.extras.contains("id=\"1\""))
-        assertTrue(both.extras.contains("id=\"$id2\""))
+        assertTrue(both.markers.any { it.xml.contains("id=\"1\"") })
+        assertTrue(both.markers.any { it.xml.contains("id=\"$id2\"") })
         val back = DocxComments.stripPara(both, id2)
         assertEquals("hello$OBJ_CHAR", back.text)
         assertTrue(back.fmts.last().obj!!.contains("commentReference w:id=\"1\""))
@@ -184,5 +184,22 @@ class DocxCommentsTest {
         val out = save(bytes, pkg, DocState(listOf(typed)))
         assertEquals(entry(bytes, "word/comments.xml"), entry(out, "word/comments.xml"))
         assertEquals("First note", read(out).first.comments.items.single().text)
+    }
+
+    @Test
+    fun editingBeforeCommentKeepsRangeAtItsOriginalText() {
+        val body = "<w:p><w:r><w:t>prefix </w:t></w:r>" +
+            "<w:commentRangeStart w:id=\"1\"/><w:r><w:t>hello</w:t></w:r>" +
+            "<w:commentRangeEnd w:id=\"1\"/><w:r><w:commentReference w:id=\"1\"/></w:r></w:p>"
+        val bytes = docx(body)
+        val (pkg, state) = read(bytes)
+        val p = paras(state).single()
+        val changed = DocxEdits.typed(p, "added prefix " + p.text, CharFmt.Plain)
+        val out = save(bytes, pkg, DocState(listOf(changed)))
+        val xml = entry(out, "word/document.xml")!!
+        val start = xml.indexOf("commentRangeStart")
+        val hello = xml.indexOf(">hello<")
+        val end = xml.indexOf("commentRangeEnd")
+        assertTrue(start >= 0 && hello > start && end > hello)
     }
 }

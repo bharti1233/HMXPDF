@@ -391,13 +391,13 @@ class DocxRevisionsTest {
             "</w:p>"
         val (_, state) = read(docx(body))
         val p = paras(state)[0]
-        assertTrue(p.extras.contains("commentRangeStart"))
-        assertTrue(p.extras.contains("commentRangeEnd"))
+        assertTrue(p.markers.any { it.xml.contains("commentRangeStart") })
+        assertTrue(p.markers.any { it.xml.contains("commentRangeEnd") })
         // Accepting the deletion keeps the markers and the reference run exactly.
         val np = DocxRevisions.accept(p, 7)
         assertEquals("a$OBJ_CHAR", np.text)
-        assertTrue(np.extras.contains("commentRangeStart"))
-        assertTrue(np.extras.contains("commentRangeEnd"))
+        assertTrue(np.markers.any { it.xml.contains("commentRangeStart") })
+        assertTrue(np.markers.any { it.xml.contains("commentRangeEnd") })
         assertTrue(np.fmts.last().obj!!.contains("commentReference"))
     }
 

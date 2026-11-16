@@ -42,26 +42,26 @@ class DocxComments(val path: String?, val xml: String?) {
             "", null, "<w:r><w:rPr><w:rStyle w:val=\"CommentReference\"/></w:rPr><w:commentReference w:id=\"$id\"/></w:r>"
         )
 
-        private fun markers(id: String) =
-            "<w:commentRangeStart w:id=\"$id\"/><w:commentRangeEnd w:id=\"$id\"/>"
+        private fun markers(id: String) = listOf(
+            DocMarker("<w:commentRangeStart w:id=\"$id\"/>", 0),
+            DocMarker("<w:commentRangeEnd w:id=\"$id\"/>", 0)
+        )
 
         /** Puts a comment's markers and reference run on [p] (markers at the start, run at the end). */
         fun anchorPara(p: DocPara, id: String): DocPara =
-            p.edited(extras = markers(id) + p.extras, text = p.text + OBJ_CHAR, fmts = p.fmts + reference(id))
+            p.edited(text = p.text + OBJ_CHAR, fmts = p.fmts + reference(id), markers = markers(id) + p.markers)
 
         /** Removes every marker and reference run of [id] from [p]. */
         fun stripPara(p: DocPara, id: String): DocPara {
             val ref = """w:commentReference w:id="$id"""
             val drop = (0 until p.text.length).filter { p.fmts[it].obj?.contains(ref) == true }.toSet()
-            val extras = p.extras
-                .replace(Regex("""<w:commentRangeStart[^>]*w:id="$id"[^>]*/>"""), "")
-                .replace(Regex("""<w:commentRangeEnd[^>]*w:id="$id"[^>]*/>"""), "")
-            if (drop.isEmpty() && extras == p.extras) return p
+            val markers = p.markers.filterNot { it.xml.contains("commentRangeStart") && it.xml.contains("w:id=\"$id\"") || it.xml.contains("commentRangeEnd") && it.xml.contains("w:id=\"$id\"") }
+            if (drop.isEmpty() && markers.size == p.markers.size) return p
             val text = StringBuilder(p.text.length)
             val fmts = ArrayList<CharFmt>(p.text.length)
             for (i in 0 until p.text.length) if (i !in drop) { text.append(p.text[i]); fmts.add(p.fmts[i]) }
             val marks = p.marks.map { m -> m - drop.count { it < m } }.distinct()
-            return p.edited(text = text.toString(), fmts = fmts, extras = extras, marks = marks)
+            return p.edited(text = text.toString(), fmts = fmts, marks = marks, markers = markers)
         }
     }
 

@@ -50,11 +50,27 @@ class DocxReplaceTest {
     @Test
     fun staleRangeAgainstShrunkParagraphNoOpsInsteadOfCrashing() {
         val p = para("hi")
-        // A1: ranges collected before the paragraph shrank below them clamp to the current text —
-        // fully stale ranges no-op (same instance), partially clipped ranges replace the remainder.
+        // A stale range must never be clipped into an unrelated replacement.
         assertSame(p, DocxEdits.replaceRange(p, 4, 6, "new"))
         assertSame(p, DocxEdits.replaceRange(p, 0, -1, "x"))
-        assertEquals("new", DocxEdits.replaceRange(para("hi"), 0, 6, "new").text)
+        assertSame(p, DocxEdits.replaceRange(p, 0, 6, "new"))
+        assertSame(p, DocxEdits.replaceRange(p, 0, 2, "new", expected = "no"))
+    }
+
+    @Test
+    fun markerOffsetsFollowReplacementAndWriterKeepsTheirPosition() {
+        val p = para("one two three").edited(
+            markers = listOf(
+                DocMarker("<w:bookmarkStart w:id=\"7\"/>", 4),
+                DocMarker("<w:bookmarkEnd w:id=\"7\"/>", 7)
+            )
+        )
+        val r = DocxEdits.replaceRange(p, 0, 3, "first", expected = "one")
+        assertEquals(listOf(6, 9), r.markers.map { it.offset })
+        val out = StringBuilder()
+        DocxWriter.para(r, out)
+        assertTrue(out.indexOf("first ") < out.indexOf("bookmarkStart"))
+        assertTrue(out.indexOf("bookmarkStart") < out.indexOf("two"))
     }
 
     @Test

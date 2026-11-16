@@ -202,6 +202,7 @@ object DocxReader {
             val text = StringBuilder()
             val fmts = ArrayList<CharFmt>()
             val extras = StringBuilder()
+            val rangeMarkers = ArrayList<DocMarker>()
             val marks = ArrayList<Int>()
             val revs = HashMap<Int, RevMeta>()
             var editable = !readOnly
@@ -255,7 +256,7 @@ object DocxReader {
                         val flag = Rev(c.local == "ins", id)
                         for (h in c.children) when {
                             h.local == "r" -> run(h, null, flag)
-                            h.local in markers -> extras.append(h.text(xml))
+                            h.local in markers -> rangeMarkers.add(DocMarker(h.text(xml), text.length))
                             else -> {}
                         }
                     }
@@ -265,12 +266,12 @@ object DocxReader {
                     if (tag.endsWith("/>")) continue
                     for (h in c.children) when {
                         h.local == "r" -> run(h, tag)
-                        h.local in markers -> extras.append(h.text(xml))
+                        h.local in markers -> rangeMarkers.add(DocMarker(h.text(xml), text.length))
                         h.local == "proofErr" -> {}
                         else -> { editable = false; deep(h) }
                     }
                 }
-                in markers -> extras.append(c.text(xml))
+                in markers -> rangeMarkers.add(DocMarker(c.text(xml), text.length))
                 else -> { editable = false; deep(c) }
             }
             // Symbols set in fonts we can't draw, maths, fields… still show their text, but such
@@ -286,7 +287,8 @@ object DocxReader {
                 fmts = fmts,
                 editable = editable,
                 marks = marks,
-                revs = revs
+                revs = revs,
+                markers = rangeMarkers
             )
         }
 

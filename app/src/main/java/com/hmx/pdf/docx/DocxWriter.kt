@@ -246,12 +246,16 @@ object DocxWriter {
     fun para(p: DocPara, sb: StringBuilder) {
         if (p.origin != null) { sb.append(p.origin); return }
         sb.append(p.openTag).append(p.pPr).append(p.extras)
+        val markers = p.markers.groupBy { it.offset }
+        fun emitMarkers(at: Int) { markers[at]?.forEach { sb.append(it.xml) } }
+        emitMarkers(0)
         val n = p.text.length
         var i = 0
         while (i < n) {
+            emitMarkers(i)
             val link = p.fmts[i].link
-            var j = i
-            while (j < n && p.fmts[j].link == link) j++
+            var j = i + 1
+            while (j < n && p.fmts[j].link == link && !markers.containsKey(j)) j++
             if (link != null) {
                 sb.append(link)
                 runs(p, i, j, sb)
@@ -259,6 +263,7 @@ object DocxWriter {
             } else runs(p, i, j, sb)
             i = j
         }
+        emitMarkers(n)
         sb.append("</").append(tagName(p.openTag)).append('>')
     }
 

@@ -179,6 +179,7 @@ import com.hmx.pdf.docx.DocBlock
 import com.hmx.pdf.docx.DocPara
 import com.hmx.pdf.docx.DocRaw
 import com.hmx.pdf.docx.DocRow
+import com.hmx.pdf.docx.DocState
 import com.hmx.pdf.docx.DocTable
 import com.hmx.pdf.docx.DocxEdits
 import com.hmx.pdf.docx.DocxObjects
@@ -533,12 +534,13 @@ private fun DocxEditorContent(
 
     // Find, off the main thread and debounced. Same matcher powers replace, so matchness and
     // replacement always agree (object runs can never be spliced).
-    val matches by produceState(emptyList<Pair<Long, IntRange>>(), doc, searchQuery, matchCase) {
+    val searchResult by produceState<Pair<DocState?, List<Pair<Long, IntRange>>>>(null to emptyList(), doc, searchQuery, matchCase) {
         val q = searchQuery.trim()
         val d = doc
-        if (q.isEmpty() || d == null) { value = emptyList(); return@produceState }
+        value = null to emptyList()
+        if (q.isEmpty() || d == null) return@produceState
         delay(160)
-        value = withContext(Dispatchers.Default) {
+        val found = withContext(Dispatchers.Default) {
             val out = ArrayList<Pair<Long, IntRange>>()
             forEachPara(d.blocks) { p ->
                 for (r in DocxEdits.matchesIn(p.text, q, !matchCase)) {
@@ -548,7 +550,9 @@ private fun DocxEditorContent(
             }
             out
         }
+        value = d to found
     }
+    val matches = if (searchResult.first === doc) searchResult.second else emptyList()
     val hitsByPara = remember(matches) { matches.groupBy({ it.first }, { it.second }) }
     fun itemOfHit(id: Long, at: Int): Int? {
         val f = flat ?: return null
@@ -1262,7 +1266,7 @@ private fun DocxEditorContent(
                                 hintColor = replaceInk.soft
                             )
                             LiquidIconButton(
-                                onClick = { matches.getOrNull(currentMatch)?.let { (id, r) -> viewModel.replaceOne(id, r, replaceWith) } },
+                                onClick = { matches.getOrNull(currentMatch)?.let { (id, r) -> viewModel.replaceOne(id, r, replaceWith, searchResult.first) } },
                                 backdrop = screenBackdrop.content,
                                 modifier = replaceInk.modifier.size(40.dp)
                             ) {

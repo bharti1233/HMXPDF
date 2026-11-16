@@ -261,7 +261,7 @@ class DocxEditorViewModeTest {
         assertEquals(1, items.size)
         assertEquals("note", items[0].text)
         // The body paragraph is the first editable one and now carries the new anchor.
-        assertTrue(v.para(id)!!.extras.contains("commentRangeStart w:id=\"${items[0].id}\""))
+        assertTrue(v.para(id)!!.markers.any { it.xml.contains("commentRangeStart w:id=\"${items[0].id}\"") })
         assertEquals(1, v.comments().size)
     }
 

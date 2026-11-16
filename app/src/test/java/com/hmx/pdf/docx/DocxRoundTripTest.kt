@@ -86,7 +86,7 @@ class DocxRoundTripTest {
         assertEquals("B1", ps[5].text)
         assertEquals("https://example.com", pkg.links["rId9"])
         assertEquals(12240, pkg.page.width)
-        assertTrue(ps[0].extras.contains("bookmarkStart"))
+        assertTrue(ps[0].markers.any { it.xml.contains("bookmarkStart") })
     }
 
     @Test
@@ -115,7 +115,7 @@ class DocxRoundTripTest {
         assertEquals(q.fmts[0].rPr, q.fmts[6].rPr)
         assertTrue(q.fmts[10].rPr.contains("<w:i/>"))
         assertTrue(q.pPr.contains("Heading1"))
-        assertTrue(q.extras.contains("bookmarkStart"))
+        assertTrue(q.markers.any { it.xml.contains("bookmarkStart") })
         assertEquals("link after", paras(again)[2].text)
     }
 

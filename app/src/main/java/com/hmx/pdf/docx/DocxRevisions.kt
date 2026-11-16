@@ -46,7 +46,10 @@ object DocxRevisions {
         }
         return p.edited(
             text = text.toString(), fmts = fmts, revs = revs,
-            marks = p.marks.map { m -> (m - drop.count { it < m }).coerceIn(0, text.length) }.distinct()
+            marks = p.marks.map { m -> (m - drop.count { it < m }).coerceIn(0, text.length) }.distinct(),
+            markers = p.markers.map { marker ->
+                marker.copy(offset = (marker.offset - drop.count { it < marker.offset }).coerceIn(0, text.length))
+            }
         )
     }
 

@@ -6,6 +6,19 @@ package com.hmx.pdf.docx
  */
 object DocxEdits {
 
+    private fun shiftMarkers(p: DocPara, start: Int, end: Int, inserted: Int): List<DocMarker> {
+        val delta = inserted - (end - start)
+        return p.markers.map { marker ->
+            val offset = when {
+                start == end && marker.offset >= start -> marker.offset + inserted
+                marker.offset < start -> marker.offset
+                marker.offset >= end -> marker.offset + delta
+                else -> start
+            }
+            marker.copy(offset = offset)
+        }
+    }
+
     /** The paragraph mark's own formatting, which Word gives to text typed into an empty paragraph. */
     fun markFmt(p: DocPara): CharFmt {
         var r = Props.child(p.pPr, "rPr") ?: return CharFmt.Plain
@@ -59,7 +72,8 @@ object DocxEdits {
             // Word's page marks move with the text after the edit.
             val delta = newText.length - old.length
             val marks = p.marks.map { m -> if (m <= pre) m else if (m >= old.length - suf) m + delta else pre }.distinct()
-            return p.edited(text = newText, fmts = fmts, marks = marks)
+            return p.edited(text = newText, fmts = fmts, marks = marks,
+                markers = shiftMarkers(p, pre, old.length - suf, newText.length - pre - suf))
         }
         val midEnd = newText.length - suf
         val text = StringBuilder(newText.length)
@@ -80,7 +94,8 @@ object DocxEdits {
         val delta = out.length - old.length
         val marks = p.marks.map { m -> if (m <= pre) m else if (m >= old.length - suf) m + delta else pre }.distinct()
         val revs = if (meta != null) p.revs + (revId to meta) else p.revs
-        return p.edited(text = out, fmts = fmts, marks = marks, revs = revs)
+        return p.edited(text = out, fmts = fmts, marks = marks, revs = revs,
+            markers = shiftMarkers(p, pre, old.length - suf, midEnd - pre))
     }
 
     /** Non-overlapping occurrences of [q] in [t], skipping any match that would include an object char. */
@@ -104,27 +119,26 @@ object DocxEdits {
      * revision, [meta] records its author/date; already-pending insertions vanish, pending
      * deletions of other ids just drop from their list (the text was deleted again).
      */
-    fun replaceRange(p: DocPara, start: Int, end: Int, newText: String, revId: Int? = null, meta: RevMeta? = null): DocPara {
+    fun replaceRange(p: DocPara, start: Int, end: Int, newText: String, revId: Int? = null, meta: RevMeta? = null,
+        expected: String? = null): DocPara {
         if (start < 0 || start >= end) return p
-        // A match can go stale (find is debounced up to ~160 ms): the paragraph may have shrunk
-        // below the collected range by replace time — no-op, never a StringIndexOutOfBounds crash.
-        val top = minOf(end, p.text.length)
-        if (start >= top || start >= p.fmts.size) return p
-        if ((start until top).any { p.text[it] == OBJ_CHAR }) return p
+        if (end > p.text.length || end > p.fmts.size) return p
+        if (expected != null && p.text.substring(start, end) != expected) return p
+        if ((start until end).any { p.text[it] == OBJ_CHAR }) return p
         if (revId == null) {
-            val text = p.text.substring(0, start) + newText + p.text.substring(top)
+            val text = p.text.substring(0, start) + newText + p.text.substring(end)
             val fmts = ArrayList<CharFmt>(text.length)
             for (i in 0 until start) fmts.add(p.fmts[i])
             repeat(newText.length) { fmts.add(p.fmts[start]) }
-            for (i in top until p.text.length) fmts.add(p.fmts[i])
-            val delta = newText.length - (top - start)
-            val marks = p.marks.map { m -> if (m < start) m else if (m >= top) m + delta else start }.distinct()
-            return p.edited(text = text, fmts = fmts, marks = marks)
+            for (i in end until p.text.length) fmts.add(p.fmts[i])
+            val delta = newText.length - (end - start)
+            val marks = p.marks.map { m -> if (m < start) m else if (m >= end) m + delta else start }.distinct()
+            return p.edited(text = text, fmts = fmts, marks = marks, markers = shiftMarkers(p, start, end, newText.length))
         }
         val text = StringBuilder(p.text.length + newText.length)
         val fmts = ArrayList<CharFmt>(text.length)
         for (i in 0 until start) { text.append(p.text[i]); fmts.add(p.fmts[i]) }
-        for (i in start until top) {
+        for (i in start until end) {
             val f = p.fmts[i]
             // Pending insertions vanish (they were never content); a pending deletion re-deleted
             // is applied; ordinary characters stay as this revision's deletion.
@@ -134,28 +148,36 @@ object DocxEdits {
             }
         }
         for (c in newText) { text.append(c); fmts.add(p.fmts[start].copy(rev = Rev(true, revId))) }
-        for (i in top until p.text.length) { text.append(p.text[i]); fmts.add(p.fmts[i]) }
+        for (i in end until p.text.length) { text.append(p.text[i]); fmts.add(p.fmts[i]) }
         val out = text.toString()
         val marks = p.marks.map { m ->
             when {
                 m < start -> m
-                m >= top -> m + (out.length - p.text.length)
+                m >= end -> m + (out.length - p.text.length)
                 else -> start
             }
         }.distinct()
         val revs = if (meta != null) p.revs + (revId to meta) else p.revs
-        return p.edited(text = out, fmts = fmts, marks = marks, revs = revs)
+        return p.edited(text = out, fmts = fmts, marks = marks, revs = revs,
+            markers = shiftMarkers(p, start, end, newText.length))
     }
 
     /** Applies the replacement to every matched range of [p] (ranges refer to [p]'s current text). */
-    fun replaceAllIn(p: DocPara, ranges: List<IntRange>, newText: String, revId: Int? = null, meta: RevMeta? = null): DocPara =
-        ranges.sortedByDescending { it.first }.fold(p) { cur, r -> replaceRange(cur, r.first, r.last + 1, newText, revId, meta) }
+    fun replaceAllIn(p: DocPara, ranges: List<IntRange>, newText: String, revId: Int? = null, meta: RevMeta? = null): DocPara {
+        val ordered = ranges.sortedBy { it.first }
+        if (ordered.any { it.first < 0 || it.last < it.first || it.last >= p.text.length } ||
+            ordered.zipWithNext().any { (a, b) -> a.last >= b.first }) return p
+        return ordered.asReversed().fold(p) { cur, r ->
+            replaceRange(cur, r.first, r.last + 1, newText, revId, meta, p.text.substring(r))
+        }
+    }
 
     /** Splits at [at]; the section break (if this paragraph ends a section) moves to the second half. */
     fun split(p: DocPara, at: Int, styles: DocxStyles): Pair<DocPara, DocPara> {
         val a = p.edited(
             text = p.text.substring(0, at), fmts = p.fmts.subList(0, at).toList(),
-            pPr = Props.setP(p.pPr, "sectPr", null), marks = p.marks.filter { it < at }
+            pPr = Props.setP(p.pPr, "sectPr", null), marks = p.marks.filter { it < at },
+            markers = p.markers.filter { it.offset <= at }
         )
         var bPpr = p.pPr
         if (at >= p.text.length) {
@@ -170,7 +192,8 @@ object DocxEdits {
         val b = DocPara(
             id = DocIds.next(), origin = null, openTag = "<w:p>", pPr = bPpr, extras = "",
             text = p.text.substring(at), fmts = p.fmts.subList(at, p.text.length).toList(), editable = true,
-            marks = p.marks.filter { it >= at }.map { it - at }, revs = p.revs
+            marks = p.marks.filter { it >= at }.map { it - at }, revs = p.revs,
+            markers = p.markers.filter { it.offset > at }.map { it.copy(offset = it.offset - at) }
         )
         return a to b
     }
@@ -180,7 +203,8 @@ object DocxEdits {
         Props.child(cur.pPr, "sectPr")?.let { pPr = Props.setP(pPr, "sectPr", it) }
         return prev.edited(
             text = prev.text + cur.text, fmts = prev.fmts + cur.fmts, pPr = pPr, extras = prev.extras + cur.extras,
-            marks = prev.marks + cur.marks.map { it + prev.text.length }, revs = prev.revs + cur.revs
+            marks = prev.marks + cur.marks.map { it + prev.text.length }, revs = prev.revs + cur.revs,
+            markers = prev.markers + cur.markers.map { it.copy(offset = it.offset + prev.text.length) }
         )
     }
 

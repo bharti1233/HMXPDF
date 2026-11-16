@@ -404,9 +404,13 @@ class DocxEditorViewModel : ViewModel() {
     }
 
     /** Replaces one match on its paragraph — one undo step. The range must come from a live match. */
-    fun replaceOne(id: Long, range: IntRange, replacement: String) {
+    fun replaceOne(id: Long, range: IntRange, replacement: String, searchedState: DocState? = doc) {
+        if (!editMode || !editable || searchedState !== doc) return
+        val current = para(id) ?: return
+        if (range.first < 0 || range.last < range.first || range.last >= current.text.length) return
+        val expected = current.text.substring(range)
         val (revId, meta) = if (tracking) capture(freshKey())!! else null to null
-        mapParas(listOf(id)) { cur -> DocxEdits.replaceRange(cur, range.first, range.last + 1, replacement, revId, meta) }
+        mapParas(listOf(id)) { cur -> DocxEdits.replaceRange(cur, range.first, range.last + 1, replacement, revId, meta, expected) }
     }
 
     // ── comments ───────────────────────────────────────────────────────────────
@@ -479,6 +483,12 @@ class DocxEditorViewModel : ViewModel() {
         val anchored = HashSet<String>()
         forEachPara(d.blocks) { p ->
             Regex("""<w:commentRangeStart[^>]*w:id="(\d+)""").findAll(p.extras).forEach { anchored.add(it.groupValues[1]) }
+        }
+        forEachPara(d.blocks) { p ->
+            for (marker in p.markers) {
+                val node = com.hmx.pdf.docx.XmlScan.scan(marker.xml).children.firstOrNull() ?: continue
+                if (node.local == "commentRangeStart") node.attr(marker.xml, "id")?.let { anchored.add(it) }
+            }
         }
         return cm.items.filter { it.id in anchored }
     }
