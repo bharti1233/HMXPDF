@@ -83,7 +83,8 @@ object DocxPageLayout {
 
     fun titlePg(sectPr: String): Boolean {
         if (sectPr.isEmpty()) return false
-        return root(sectPr)?.child("titlePg") != null
+        val e = root(sectPr)?.child("titlePg") ?: return false
+        return onOff(e, sectPr)
     }
 
     fun withTitlePg(sectPr: String, on: Boolean): String =
@@ -132,12 +133,17 @@ object DocxPageLayout {
 
     private fun paraIndex(state: DocState, id: Long) = state.blocks.indexOfFirst { it is DocPara && it.id == id }
 
-    /** The section [beforeId] belongs to: the one whose sectPr paragraph is the first after it, else the body-level last. */
+    /**
+     * The section [beforeId] belongs to: the one whose sectPr paragraph is the first at or after
+     * it, else the body-level last. Inclusive on purpose (FA-22): a paragraph that itself carries
+     * a `sectPr` terminates its own section, so it belongs to the section it ends — Word treats
+     * the break paragraph as that section's last paragraph.
+     */
     fun sectionAt(state: DocState, beforeId: Long): Section {
         val i = paraIndex(state, beforeId)
         val at = sections(state)
         return at.filter { s -> s.paraId != null }
-            .filter { s -> paraIndex(state, s.paraId!!) > i }
+            .filter { s -> paraIndex(state, s.paraId!!) >= i }
             .minByOrNull { s -> paraIndex(state, s.paraId!!) }
             ?: at.last()
     }
@@ -186,13 +192,20 @@ object DocxPageLayout {
         return "word/${base}${max + 1}.xml"
     }
 
-    /** `w:hdr` / `w:ftr` part from edited paragraph blocks — the writer's own run serializer keeps rPr/objects/links. */
-    fun hfXml(list: List<DocBlock>, header: Boolean): String {
+    /**
+     * `w:hdr` / `w:ftr` part from edited paragraph blocks — the writer's own run serializer keeps rPr/objects/links.
+     * When [envelope] carries the part's original root start tag, it is re-emitted verbatim (FA-03):
+     * namespaces other than `w`, `mc:Ignorable` and any other root attributes survive the edit
+     * instead of being silently dropped (which left the preserved children with unbound prefixes).
+     */
+    fun hfXml(list: List<DocBlock>, header: Boolean, envelope: String? = null): String {
         val root = if (header) "w:hdr" else "w:ftr"
         val sb = StringBuilder()
         DocxWriter.blocks(list, sb)
+        val open = envelope?.takeIf { it.startsWith('<') } ?: "<$root xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+        val name = open.drop(1).takeWhile { !it.isWhitespace() && it != '>' && it != '/' }
         return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
-            "<$root xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" + sb + "</$root>"
+            open + sb + "</" + name + ">"
     }
 
     /** The part parses back into editable paragraphs (container walk: rPr, runs, objects preserved). */
@@ -207,8 +220,17 @@ object DocxPageLayout {
 
     fun hasEvenOdd(settings: String?): Boolean {
         if (settings == null) return false
-        return root(settings)?.child("evenAndOddHeaders") != null
+        val e = root(settings)?.child("evenAndOddHeaders") ?: return false
+        return onOff(e, settings)
     }
+
+    /**
+     * OOXML `CT_OnOff` truthiness (FA-22): a bare element or an absent/recognized-true `w:val`
+     * is ON; an explicit `w:val="false"|"0"|"off"` is OFF. Treating every element as true made
+     * documents with explicitly-cleared flags report the feature on.
+     */
+    private fun onOff(e: XNode, xml: String): Boolean =
+        e.attr(xml, "val")?.trim()?.lowercase() ?.let { it != "false" && it != "0" && it != "off" } ?: true
 
     /** settings.xml child order puts evenAndOddHeaders midway; insert before the first anchor found, else last. */
     private val SETTINGS_ANCHORS = listOf(

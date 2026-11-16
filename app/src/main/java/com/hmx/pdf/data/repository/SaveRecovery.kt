@@ -54,10 +54,20 @@ internal object SaveRecovery {
     /**
      * Copies [prepared] and the current destination into durable storage and writes the journal.
      * Nothing is written to [destination] here. Throws on preparation/backup/journal failure, in
-     * which case the caller must leave the original untouched.
+     * which case the caller must leave the original untouched. The [root]-based overload is the
+     * JVM-testable core; the [Context] version only resolves `noBackupFilesDir`.
      */
     fun begin(
         context: Context,
+        destination: Uri?,
+        displayName: String,
+        kind: String,
+        prepared: File,
+        requireBackup: Boolean
+    ): Entry = begin(File(context.noBackupFilesDir, ROOT), destination, displayName, kind, prepared, requireBackup)
+
+    internal fun begin(
+        root: File,
         destination: Uri?,
         displayName: String,
         kind: String,
@@ -68,7 +78,7 @@ internal object SaveRecovery {
         if (!validateOfficePackage(prepared, kind)) {
             throw IOException("The prepared document is not a valid $kind package")
         }
-        val root = File(context.noBackupFilesDir, ROOT).apply {
+        root.apply {
             if (!exists() && !mkdirs()) throw IOException("Could not create recovery storage")
         }
         val directory = File(root, UUID.randomUUID().toString()).apply {
@@ -141,20 +151,28 @@ internal object SaveRecovery {
     /**
      * True when a destination that had a backup no longer matches it. False when there was no
      * original to compare (a Save As target) or the destination is still the backed-up bytes.
+     * An unreadable destination counts as changed — the caller must not overwrite what it
+     * cannot verify. The hash-based overload is the JVM-testable core.
      */
-    fun destinationChangedSinceBackup(context: Context, entry: Entry): Boolean {
+    fun destinationChangedSinceBackup(context: Context, entry: Entry): Boolean =
+        destinationChangedSinceBackup(entry, entry.destination?.let { hashUri(context, it) })
+
+    internal fun destinationChangedSinceBackup(entry: Entry, currentHash: String?): Boolean {
         if (entry.backup == null) return false
-        val current = destinationHash(context, entry) ?: return true
+        val current = currentHash ?: return true
         return current != entry.originalHash
     }
 
     /**
      * Journals that still need user attention. An entry is cleaned up automatically only when the
      * destination already equals the prepared copy, or when the destination is still the backed-up
-     * original and the prepared copy adds nothing. Those cases cannot lose data.
+     * original and the prepared copy adds nothing. Those cases cannot lose data. The root+hash
+     * overload is the JVM-testable core.
      */
-    fun pending(context: Context): List<Entry> {
-        val root = File(context.noBackupFilesDir, ROOT)
+    fun pending(context: Context): List<Entry> =
+        pending(File(context.noBackupFilesDir, ROOT)) { hashUri(context, it) }
+
+    internal fun pending(root: File, hashOf: (Uri) -> String?): List<Entry> {
         val entries = root.listFiles()
             ?.mapNotNull { directory ->
                 if (!directory.isDirectory) return@mapNotNull null
@@ -169,7 +187,7 @@ internal object SaveRecovery {
                 discard(entry)
                 return@filter false
             }
-            val current = entry.destination?.let { hashUri(context, it) }
+            val current = entry.destination?.let { hashOf(it) }
             if (entry.backup != null && current != null && current == entry.originalHash &&
                 (entry.prepared == null || entry.preparedHash == entry.originalHash)) {
                 // The write never changed the destination and there is no different prepared
@@ -194,14 +212,44 @@ internal object SaveRecovery {
     fun restoreIfSafe(context: Context, entry: Entry): RestoreResult {
         val destination = entry.destination ?: return RestoreResult.UNSAFE
         val current = hashUri(context, destination) ?: return RestoreResult.UNSAFE
-        if (entry.prepared != null && current == entry.preparedHash) return RestoreResult.SUCCEEDED
-        if (entry.backup == null) return RestoreResult.UNSAFE
-        if (current == entry.originalHash) return RestoreResult.UNCHANGED
-        if (validateOfficeUri(context, destination, entry.kind)) return RestoreResult.UNSAFE
-        if (!copyFileToUri(context, entry.backup, destination)) return RestoreResult.FAILED
+        when (val step = restoreStep(
+            hadDestination = true,
+            preparedHash = entry.prepared?.let { entry.preparedHash },
+            originalHash = entry.originalHash,
+            hasBackup = entry.backup != null,
+            currentHash = current,
+            destinationValid = validateOfficeUri(context, destination, entry.kind)
+        )) {
+            RestoreResult.RESTORED -> { /* the copy below is the restoration itself */ }
+            else -> return step
+        }
+        if (!copyFileToUri(context, entry.backup!!, destination)) return RestoreResult.FAILED
         val restored = hashUri(context, destination)
         if (restored != entry.originalHash) return RestoreResult.FAILED
         discard(entry)
+        return RestoreResult.RESTORED
+    }
+
+    /**
+     * The decision table of [restoreIfSafe], JVM-testable in isolation (skipped-recovery-test
+     * resolution). [RestoreResult.RESTORED] here means "the backup should be put back" — the
+     * actual copy and its verification stay in [restoreIfSafe], where a failed copy still
+     * reports [RestoreResult.FAILED].
+     */
+    internal fun restoreStep(
+        hadDestination: Boolean,
+        preparedHash: String?,
+        originalHash: String,
+        hasBackup: Boolean,
+        currentHash: String?,
+        destinationValid: Boolean
+    ): RestoreResult {
+        if (!hadDestination) return RestoreResult.UNSAFE
+        if (currentHash == null) return RestoreResult.UNSAFE
+        if (preparedHash != null && currentHash == preparedHash) return RestoreResult.SUCCEEDED
+        if (!hasBackup) return RestoreResult.UNSAFE
+        if (currentHash == originalHash) return RestoreResult.UNCHANGED
+        if (destinationValid) return RestoreResult.UNSAFE
         return RestoreResult.RESTORED
     }
 

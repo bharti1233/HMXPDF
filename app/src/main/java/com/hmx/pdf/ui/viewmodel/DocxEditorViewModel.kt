@@ -75,8 +75,8 @@ class DocxEditorViewModel : ViewModel() {
     private var saved: DocState? = null
     /** The document as opened: the local mirror already holds exactly this. */
     private var original: DocState? = null
-    private val undoStack = ArrayList<DocState>()
-    private val redoStack = ArrayList<DocState>()
+    private val undoStack = ArrayList<SessionSnap>()
+    private val redoStack = ArrayList<SessionSnap>()
     var canUndo by mutableStateOf(false)
         private set
     var canRedo by mutableStateOf(false)
@@ -202,6 +202,35 @@ class DocxEditorViewModel : ViewModel() {
     // ── edit log ───────────────────────────────────────────────────────────────
 
     /**
+     * One undo step: the body snapshot plus the package-level session state (header/footer part
+     * contents, their relationship claims, root envelopes and the settings splice) as it was
+     * *before* the change (FA-05). Restoring the body alone could bring a section reference back
+     * while its part/relationship claim was already purged — a dangling reference on the next save.
+     */
+    private class SessionSnap(
+        val body: DocState,
+        val hf: Map<String, DocState>,
+        val relIds: Map<String, String>,
+        val envelopes: Map<String, String>,
+        val settings: String?,
+        val settingsChanged: Boolean
+    )
+
+    private fun snap(): SessionSnap = SessionSnap(
+        body = doc ?: DocState(emptyList()),
+        hf = hfChanged.toMap(), relIds = hfRelIds.toMap(), envelopes = hfEnvelopes.toMap(),
+        settings = wantSettings, settingsChanged = settingsChanged
+    )
+
+    private fun restore(s: SessionSnap) {
+        doc = s.body
+        hfChanged.clear(); hfChanged.putAll(s.hf)
+        hfRelIds.clear(); hfRelIds.putAll(s.relIds)
+        hfEnvelopes.clear(); hfEnvelopes.putAll(s.envelopes)
+        wantSettings = s.settings; settingsChanged = s.settingsChanged
+    }
+
+    /**
      * Replaces the document. Typing into one paragraph coalesces into one undo step (per [key],
      * until a pause); everything else is its own step.
      */
@@ -211,7 +240,7 @@ class DocxEditorViewModel : ViewModel() {
         val now = System.currentTimeMillis()
         val coalesce = key != null && key == lastKey && now - lastAt < 1500
         if (!coalesce) {
-            undoStack.add(cur)
+            undoStack.add(snap())
             if (undoStack.size > 200) undoStack.removeAt(0)
         }
         lastKey = key
@@ -228,8 +257,8 @@ class DocxEditorViewModel : ViewModel() {
     fun undo() {
         if (!editMode) return
         val prev = undoStack.removeLastOrNull() ?: return
-        doc?.let { redoStack.add(it) }
-        doc = prev
+        doc?.let { redoStack.add(snap()) }
+        restore(prev)
         lastKey = null
         canUndo = undoStack.isNotEmpty(); canRedo = true
         restoreEpoch++
@@ -238,8 +267,8 @@ class DocxEditorViewModel : ViewModel() {
     fun redo() {
         if (!editMode) return
         val next = redoStack.removeLastOrNull() ?: return
-        doc?.let { undoStack.add(it) }
-        doc = next
+        doc?.let { undoStack.add(snap()) }
+        restore(next)
         lastKey = null
         canUndo = true; canRedo = redoStack.isNotEmpty()
         restoreEpoch++
@@ -597,6 +626,13 @@ class DocxEditorViewModel : ViewModel() {
 
     private val hfChanged = HashMap<String, DocState>()
     private val hfRelIds = HashMap<String, String>()
+    /**
+     * `path → the part's original root start tag` (FA-03): captured from the loaded part the
+     * first time it is parsed, so an edit re-serializes under a root that still declares the
+     * foreign namespaces (`r`, `a`, `wp`, `mc:Ignorable`, …) its preserved children rely on.
+     * Brand-new parts have no entry and get the minimal `w`-only root.
+     */
+    private val hfEnvelopes = HashMap<String, String>()
     private var settingsChanged = false
     /** The spliced settings.xml once the even/odd toggle is on (DocxPackage has no copy()). */
     private var wantSettings: String? = null
@@ -624,8 +660,18 @@ class DocxEditorViewModel : ViewModel() {
     /** The paragraphs of one header/footer part: the live edit when present, else the cached parse. */
     fun hfParas(path: String): List<DocPara> {
         hfChanged[path]?.let { return hfWalk(it) }
-        val saved = hfCache.getOrPut(path) { DocxPageLayout.hfState(pkg?.hfParts?.get(path) ?: "") }
+        val saved = hfCache.getOrPut(path) { parseHf(path) }
         return hfWalk(saved)
+    }
+
+    /** Parses the loaded part (empty when absent) and captures its root envelope for later saves. */
+    private fun parseHf(path: String): DocState {
+        val xml = pkg?.hfParts?.get(path)
+        if (xml != null && path !in hfEnvelopes) {
+            val root = com.hmx.pdf.docx.XmlScan.scan(xml).children.firstOrNull()
+            if (root != null) hfEnvelopes[path] = root.startTag(xml)
+        }
+        return DocxPageLayout.hfState(xml)
     }
 
     /** The field buffer of one header/footer paragraph. */
@@ -640,7 +686,7 @@ class DocxEditorViewModel : ViewModel() {
         val p = cur[idx]
         // Headers keep their paragraph's own last ink while typing (styles/fonts preserved).
         val np = DocxEdits.typed(p, newText, DocxEdits.fmtAt(p, p.text.length))
-        val base = hfChanged[path] ?: hfCache.getOrPut(path) { DocxPageLayout.hfState(pkg?.hfParts?.get(path) ?: "") }
+        val base = hfChanged[path] ?: hfCache.getOrPut(path) { parseHf(path) }
         val next = DocState(replacePara(base.blocks, np) ?: return)
         hfChanged[path] = next
     }
@@ -687,17 +733,20 @@ class DocxEditorViewModel : ViewModel() {
     }
 
     /**
-     * The header/footer part path a section reference points at ([rid]). `rels` maps id → resolved
-     * zip path, and `hfParts` membership is the type check (only header/footer rels got collected).
+     * The header/footer part path a section reference points at ([rid]). Session claims are
+     * consulted first (FA-06): a part created this session has a relationship id the loaded
+     * rels string has never seen, and re-resolving it through the loaded rels returned null —
+     * the panel's second open of a new header fell through to "cannot resolve".
      */
     fun hfPathOf(rid: String): String? {
+        hfRelIds.entries.firstOrNull { it.value == rid }?.let { return it.key }
         val p = pkg ?: return null
         return p.rels[rid]?.takeIf { it in p.hfParts }
     }
 
     /** Package-level layout state belongs to one document: clearing at every (re)load. */
     private fun resetPageLayoutExtras() {
-        hfChanged.clear(); hfRelIds.clear(); hfCache.clear(); settingsChanged = false; wantSettings = null
+        hfChanged.clear(); hfRelIds.clear(); hfEnvelopes.clear(); hfCache.clear(); settingsChanged = false; wantSettings = null
         // The loaded settings/hfs ARE the saved baseline: edits that land back on the loaded value
         // (a toggle on then off) compare equal here and stop counting as dirty.
         packageSavedSettings = pkg?.settings
@@ -708,32 +757,52 @@ class DocxEditorViewModel : ViewModel() {
     private fun extras() = DocxWriter.Extras(
         hfSave = hfChanged.toMap(),
         hfRelIds = hfRelIds.toMap(),
-        settings = if (settingsChanged) wantSettings else null
+        settings = if (settingsChanged) wantSettings else null,
+        hfEnvelopes = hfEnvelopes.toMap()
     )
+
+    /**
+     * Everything one save serializes, captured once on the owner thread (FA-04): the package, the
+     * body and the package-level edits as they were when the save was requested. The IO coroutine
+     * and [recordSaved] consume exactly this — re-reading the live fields from the write thread let
+     * edits made during a slow save change the output or be acknowledged as saved when they weren't.
+     */
+    internal data class SaveCapture(val pkg: DocxPackage, val doc: DocState, val extras: DocxWriter.Extras)
+
+    internal fun saveCapture(): SaveCapture? {
+        val p = pkg ?: return null
+        val d = doc ?: return null
+        return SaveCapture(p, d, extras())
+    }
+
+    /** The save succeeded: body and package snapshots become the dirty baseline (also a test seam). */
+    internal fun recordSaved(capture: SaveCapture) {
+        saved = capture.doc
+        // The effective part, not the raw override: a save with no settings edit still makes the
+        // loaded settings part the baseline (a null override compared against it would keep the
+        // document dirty forever after saving).
+        packageSavedSettings = capture.extras.settings ?: capture.pkg.settings
+        packageSavedHf.clear()
+        packageSavedHf.putAll(capture.extras.hfSave)
+    }
+
+    /** Legacy test seam: record the current session state as saved. */
+    internal fun recordSaved(snapshot: DocState) {
+        val p = pkg ?: return
+        recordSaved(SaveCapture(p, snapshot, extras()))
+    }
 
     /** Test seam: the same payload [save] hands the writer, so JVM tests cover what a save writes. */
     internal fun writerExtras() = extras()
 
-    /** The save succeeded: body and package snapshots become the dirty baseline (also a test seam). */
-    internal fun recordSaved(snapshot: DocState) {
-        saved = snapshot
-        // The effective part, not the raw override: a save with no settings edit still makes the
-        // loaded settings part the baseline (a null override compared against it would keep the
-        // document dirty forever after saving).
-        packageSavedSettings = effectiveSettings()
-        packageSavedHf.clear()
-        packageSavedHf.putAll(hfChanged)
-    }
-
-    private fun buildPatched(context: Context): File? {
-        val p = pkg ?: return null
-        val d = doc ?: return null
+    private fun buildPatched(context: Context, capture: SaveCapture): File? {
         val src = meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File) ?: return null
         val dir = File(context.cacheDir, "docs").apply { mkdirs() }
         val safe = meta.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "document.docx" }
             .let { if (it.lowercase().endsWith(".docx")) it else "$it.docx" }
         val out = File(dir, "edited_${System.currentTimeMillis()}_$safe")
-        return runCatching { DocxWriter.write(p, d, src, out, extras()); out }.getOrElse { out.delete(); null }
+        return runCatching { DocxWriter.write(capture.pkg, capture.doc, src, out, capture.extras); out }
+            .getOrElse { out.delete(); null }
     }
 
     sealed class SaveResult {
@@ -751,11 +820,14 @@ class DocxEditorViewModel : ViewModel() {
         if (meta.saving) return onDone(SaveResult.Failed("A save is already in progress."))
         if (!editable) return onDone(SaveResult.Failed("This document is read-only and can't be saved."))
         val dest = target ?: meta.sourceUri ?: return onDone(SaveResult.NeedsSaveAs)
-        val snapshot = doc
+        // One immutable generation for the whole save (FA-04): body, package and package-level
+        // edits are captured here on the owner thread; the writer and the acknowledgement below
+        // speak exactly this capture, never the live session state.
+        val capture = saveCapture() ?: return onDone(SaveResult.Failed("Couldn't write the document."))
         meta = meta.copy(saving = true)
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                val patched = buildPatched(context) ?: return@withContext SaveResult.Failed("Couldn't write the document.")
+                val patched = buildPatched(context, capture) ?: return@withContext SaveResult.Failed("Couldn't write the document.")
                 try {
                     when (val written = writeWithRecovery(
                         context = context,
@@ -774,9 +846,7 @@ class DocxEditorViewModel : ViewModel() {
                 }
             }
             meta = meta.copy(saving = false)
-            // Saved implies snapshot != null (the write path needs a document); the nullable val
-            // is just the state field's type.
-            if (result is SaveResult.Saved) snapshot?.let { recordSaved(it) }
+            if (result is SaveResult.Saved) recordSaved(capture)
             onDone(result)
         }
     }

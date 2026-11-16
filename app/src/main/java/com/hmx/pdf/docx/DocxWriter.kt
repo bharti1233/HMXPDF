@@ -39,7 +39,9 @@ object DocxWriter {
         val hfSave: Map<String, DocState> = emptyMap(),
         /** `path → relationship id` for added (brand-new) parts above; existing paths don't need one. */
         val hfRelIds: Map<String, String> = emptyMap(),
-        val settings: String? = null
+        val settings: String? = null,
+        /** `path → original root start tag` for edited existing parts (FA-03): keeps foreign namespaces and root attributes. */
+        val hfEnvelopes: Map<String, String> = emptyMap()
     )
 
     fun documentXml(pkg: DocxPackage, state: DocState): String {
@@ -104,7 +106,7 @@ object DocxWriter {
         }
         for ((path, ds) in extras.hfSave) {
             val header = !path.substringAfterLast('/').startsWith("footer")
-            val xml = DocxPageLayout.hfXml(ds.blocks, header)
+            val xml = DocxPageLayout.hfXml(ds.blocks, header, extras.hfEnvelopes[path])
             if (path in pkg.hfParts) {
                 replace[path] = xml.toByteArray(Charsets.UTF_8)
             } else {
