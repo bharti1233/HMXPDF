@@ -937,7 +937,12 @@ class DocxEditorViewModel : ViewModel() {
         val hasEdits = doc !== original || settingsChanged || hfChanged.isNotEmpty()
         if (!hasEdits) return onDone(officeShareSource(false, uri) { null })
         viewModelScope.launch {
-            val out = withContext(Dispatchers.IO) { buildPatched(context)?.let { Uri.fromFile(it) } }
+            // The share/export copy is one write of one generation: captured on the owner
+            // thread, exactly like save() (FA-04).
+            val cap = saveCapture()
+            val out = withContext(Dispatchers.IO) {
+                if (cap == null) null else buildPatched(context, cap)?.let { Uri.fromFile(it) }
+            }
             onDone(officeShareSource(true, uri) { out })
         }
     }

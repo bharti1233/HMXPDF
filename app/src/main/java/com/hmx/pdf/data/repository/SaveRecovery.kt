@@ -64,7 +64,9 @@ internal object SaveRecovery {
         kind: String,
         prepared: File,
         requireBackup: Boolean
-    ): Entry = begin(File(context.noBackupFilesDir, ROOT), destination, displayName, kind, prepared, requireBackup)
+    ): Entry = begin(
+        File(context.noBackupFilesDir, ROOT), destination, displayName, kind, prepared, requireBackup
+    ) { source, target -> copyUriToFile(context, source, target) }
 
     internal fun begin(
         root: File,
@@ -72,7 +74,9 @@ internal object SaveRecovery {
         displayName: String,
         kind: String,
         prepared: File,
-        requireBackup: Boolean
+        requireBackup: Boolean,
+        /** Backs the destination up; JVM tests pass null (their destinations are null anyway). */
+        copyBackup: ((Uri, File) -> Boolean)? = null
     ): Entry {
         require(kind == "docx" || kind == "xlsx") { "Unsupported document kind" }
         if (!validateOfficePackage(prepared, kind)) {
@@ -91,9 +95,9 @@ internal object SaveRecovery {
                 throw IOException("The recovery copy is not a valid $kind package")
             }
             var backup: File? = null
-            if (destination != null) {
+            if (destination != null && copyBackup != null) {
                 val candidate = File(directory, "backup.$kind")
-                if (copyUriToFile(context, destination, candidate) && candidate.isFile) {
+                if (copyBackup(destination, candidate) && candidate.isFile) {
                     backup = candidate
                 } else {
                     candidate.delete()
