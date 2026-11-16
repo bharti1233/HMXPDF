@@ -11,7 +11,7 @@ invented beyond these two approved documents and the FA defect register
 | Sub-phase | Scope (roadmap) | Status |
 |---|---|---|
 | 4.0 Foundation | Save coordinator, package-safe splicing, package-inclusive session state, shared fixtures, resolve skipped recovery tests | **IMPLEMENTED AND CI VERIFIED** (below) |
-| 4.1 Autosave & recovery | Autosave, recovery checkpoints, save reliability, disk-full handling, retry, process-death recovery | Not started |
+| 4.1 Autosave & recovery | Autosave, recovery checkpoints, save reliability, disk-full handling, retry, process-death recovery | **IMPLEMENTED AND CI VERIFIED** (below) |
 | 4.2 Advanced tables | Structural row/col ops, merge/split, borders, shading, cell margins, row heights | Not started |
 | 4.4 Footnotes/endnotes | Note part structure and editing | Not started |
 | 4.3 Spell checking | Local engine, suggestions, safe cross-run replacement | Not started |
@@ -98,3 +98,77 @@ pre-existing `@Ignore`d Android-Context-only classes, untouched) with 0 failures
   Android Context); enabling them needs Robolectric or an androidTest source set (a separate,
   deliberate change, not part of 4.0 scope).
 - External Word/LibreOffice compatibility of envelope-preserving HF parts is untested.
+
+---
+
+## Phase 4.1 — Autosave and document recovery: COMPLETE (CI verified)
+
+Published head: `e36abbb93e1cd1eaccc1115142bb9416c3ac26cf`.
+CI runs: https://github.com/bharti1233/Hmxpdf/actions/runs/43949208216 (DOCX editor, head `df0848c`)
+and https://github.com/bharti1233/Hmxpdf/actions/runs/43951540104 (spreadsheet wiring, head
+`e36abbb`) — both completed/success; artifacts (debug APK 170.82 MB, signed release APK 134.65 MB,
+AAB 51.20 MB) correspond to the published head (remote verified).
+
+### What was implemented
+
+- **`EditorCheckpointStore`** (`data/repository`): one complete, validated package per document
+  identity — sha-256 of the source URI, never the display name — under `noBackupFilesDir`.
+  Commit protocol: copy to temp → validate (reuses `SaveRecovery.validateOfficePackage`) → fsync
+  → atomic rename (commit point 1) → metadata temp+rename (commit point 2). The last known-good
+  checkpoint survives disk-full, mid-write interruption and death before the metadata rename;
+  metadata carries version, identity, display name, kind (docx/xlsx), checkpoint hash, sticky
+  originalHash (the opened destination's hash, for conflict labeling), generation, createdAt,
+  session UUID. `find` refuses checkpoints whose bytes no longer match the recorded hash and
+  cleans unusable leftovers. No second writer: checkpoints are produced through the same
+  writer-generated complete packages the save path builds.
+- **`AutosaveCoordinator`**: deterministic scheduling core — ~2 s idle debounce after the last
+  edit, 15 s bounded maximum dirty interval (continuous typing still checkpoints), one write at
+  a time, edits during a write coalesce into exactly one immediate follow-up; a running write is
+  never cancelled by continued typing. Pure, clock-injected.
+- **DOCX editor wiring** (`DocxEditorViewModel`): every mutation path (body `commit`, undo/redo,
+  settings/HF package edits) feeds the coordinator; checkpoint writes ride the 4.0
+  `SaveCapture` discipline (one captured generation per write); a successful manual save stops
+  scheduling and deletes the stored checkpoint (a recovered copy never outlives the save it
+  protected); `load()` discovers a pending checkpoint and offers recover/discard/later;
+  recovery loads the checkpoint package, marks the document dirty against the opened original
+  (no false clean state), restarts undo (roadmap-sanctioned) and labels stale originals
+  (destination changed since the checkpoint) via the mirror hash comparison.
+- **Spreadsheet wiring** (`SpreadsheetViewModel`): the same pipeline — coordinator + xlsx
+  checkpoints; push/undo/redo touch the schedule; the op-log size is the checkpoint delta;
+  save clears the store; recovery restarts the op log with `savedAt = -1` (dirty until a real
+  save). Legacy .xls is read-only and therefore naturally never checkpoints.
+- **UI**: recovery prompts in both editors using the established dialog components
+  (`GlassDialog` in the DOCX editor; `UnsavedChangesDialog` with checkpoint labels in the
+  spreadsheet), strings localized in all 7 locales (reusing the save-recovery Discard/Later
+  conventions).
+- **WorkManager cleanup**: intentionally not added (the roadmap marks it optional/deferred);
+  cleanup happens per-document on save/discard and corrupt leftovers self-clean on `find`.
+
+### Tests
+
+- `AutosaveCoordinatorTest` (7, fake clock): idle debounce, bounded interval, clean-document
+  no-schedule, single-write mutual exclusion, coalesced follow-up, no-op write end, save reset.
+- `EditorCheckpointStoreTest` (8): metadata round trip, display-name non-identity, generation
+  increments with sticky originalHash, failed commit keeps the prior checkpoint, corrupted
+  checkpoint refused+cleaned, clear, unknown identity, key stability.
+- CI (run 43951540104): 305 executed, 0 failures, 42 pre-existing skips.
+
+### CI history for this sub-phase
+
+| Run | Commit | Result | Root cause of failure |
+|---|---|---|---|
+| 43946472274 | `f58a6ec` | failure | Kotlin visibility: public property exposing the internal `Checkpoint` type → fixed `67e249a` |
+| 43947101199 | `67e249a` | failure | test-only: `listFiles()` NPE on a deliberately deleted directory → fixed `df0848c` |
+| 43949208216 | `df0848c` | success | — (DOCX editor verification) |
+| 43951540104 | `e36abbb` | **success** | — (spreadsheet wiring verification) |
+
+### Not verified / remaining limits
+
+- Process-death recovery is proven at the store/decision level on the JVM (validate/rename
+  protocol, metadata, staleness) plus inspection of the VM wiring; a real force-stop/restart
+  cycle on a device is not executed by CI (no emulator) — the roadmap's on-device scenarios
+  (revoked URI live behavior, device restart, force-stop-then-launch) remain device-verified
+  work.
+- The 2 s/15 s constants are the roadmap's defaults, unprofiled (roadmap: configurable after
+  device profiling).
+- No WorkManager-based opportunistic cleanup (optional per roadmap).

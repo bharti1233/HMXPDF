@@ -57,9 +57,21 @@ Commits (normal pushes): `c8816c2` (implementation) → repairs `632d9d5` (2 com
 
 Report: `docs/phase-completion/PHASE4_FINAL_REPORT.md`.
 
-## Phase 4.1 — Autosave and Recovery: NEXT
+## Phase 4.1 — Autosave and Recovery: COMPLETE (CI verified)
 
-Next steps (STEP A): read the roadmap §4.1 + gap-analysis "Autosave and recovery"; audit existing autosave/recovery seams (`SaveRecovery` usage, VM save path, lifecycle); identify gaps; implement with tests; publish; monitor CI.
+Commits: `f58a6ec` (DOCX editor: store + coordinator + wiring + recovery UI) → repair `67e249a` (internal visibility of `pendingCheckpoint`) → repair `df0848c` (test-only `listFiles` NPE) → `e36abbb` (spreadsheet wiring). Final runs: 43949208216 (DOCX) and 43951540104 (full) — **both success** (305 tests / 0 failures / 42 pre-existing skips, lint, debug APK 170.82 MB, signed release APK 134.65 MB + AAB 51.20 MB, release-guard).
+
+- `EditorCheckpointStore`: one validated complete package per document identity (sha-256 of the source URI) under noBackupFilesDir; validate→atomic-rename keeps the last known-good checkpoint through disk-full/interruption/death; generation + sticky originalHash metadata; corrupt leftovers refused+cleaned.
+- `AutosaveCoordinator`: 2 s idle debounce, 15 s bounded dirty interval, one write at a time, edits-during-write coalesce into one immediate follow-up.
+- Both editors wired: checkpoint writes ride the save-capture/op-log discipline; manual save clears the store; load offers recover/discard/later; recovery never produces a false clean state; stale originals labeled. Recovery UI in the established dialog patterns, 7 locales.
+- Tests: AutosaveCoordinatorTest (7) + EditorCheckpointStoreTest (8).
+- Limits: on-device force-stop/restart scenarios remain device-verified work; 2 s/15 s unprofiled; WorkManager cleanup not added (roadmap-optional).
+
+Report: `docs/phase-completion/PHASE4_FINAL_REPORT.md`.
+
+## Phase 4.2 — Advanced Tables: NEXT
+
+Next steps (STEP A): read roadmap §4.2 + gap-analysis "Advanced DOCX tables"; audit the existing table model (reader cell blocks, `mapContainerOf`, writer `table`), reject/protect revision-bearing structural edits; implement row/col ops, merge/split, borders/shading/margins/row heights with tests; publish; monitor CI.
 
 ## Open items / risks
 
