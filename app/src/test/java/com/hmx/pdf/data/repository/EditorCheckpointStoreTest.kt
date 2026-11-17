@@ -135,6 +135,45 @@ class EditorCheckpointStoreTest {
     }
 
     @Test
+    fun storageIsBoundedToOneGenerationPlusMetadata() {
+        val r = root()
+        val first = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"))!!
+        val dir = first.directory
+        // Leftovers a crash can produce: an unpublished generation and a temp copy.
+        val orphan = File(dir, "checkpoint-${java.util.UUID.randomUUID()}.docx").apply { writeBytes(byteArrayOf(1)) }
+        val temp = File(dir, "${java.util.UUID.randomUUID()}.tmp").apply { writeBytes(byteArrayOf(1)) }
+        val second = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v2"))!!
+        assertFalse(first.file.exists())
+        assertFalse(orphan.exists())
+        assertFalse(temp.exists())
+        assertEquals(second.file, EditorCheckpointStore.find(r, "content://doc/1")!!.file)
+        assertEquals(setOf(second.file.name, "meta.properties"), dir.list()!!.toSet())
+    }
+
+    @Test
+    fun aFailedPublicationLeavesNoGenerationBehind() {
+        val r = root()
+        val first = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"))!!
+        val before = first.directory.list()!!.toSet()
+        val failed = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v2")) {
+            throw java.io.IOException("Injected failure after package rename")
+        }
+        assertNull(failed)
+        assertEquals(before, first.directory.list()!!.toSet())
+        assertEquals(first.file, EditorCheckpointStore.find(r, "content://doc/1")!!.file)
+    }
+
+    @Test
+    fun aCheckpointCopiedUnderAnotherIdentityIsRefused() {
+        val r = root()
+        val ck = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"))!!
+        val other = File(r, EditorCheckpointStore.keyFor("content://doc/2")).apply { mkdirs() }
+        ck.directory.listFiles()!!.forEach { it.copyTo(File(other, it.name), overwrite = true) }
+        // The metadata still names doc/1, so it must not surface as doc/2's recovery copy.
+        assertNull(EditorCheckpointStore.find(r, "content://doc/2"))
+    }
+
+    @Test
     fun clearRemovesEverythingForTheIdentity() {
         val r = root()
         val ck = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"), null)!!

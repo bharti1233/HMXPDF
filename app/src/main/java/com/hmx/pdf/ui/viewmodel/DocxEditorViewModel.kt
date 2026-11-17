@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmx.pdf.data.repository.AutosaveCoordinator
 import com.hmx.pdf.data.repository.EditorCheckpointStore
+import com.hmx.pdf.data.repository.EditorTempFiles
 import com.hmx.pdf.data.repository.LocalDocumentMirror
 import com.hmx.pdf.data.repository.RecentFile
 import com.hmx.pdf.data.repository.RecentFilesManager
@@ -164,6 +165,7 @@ class DocxEditorViewModel : ViewModel() {
             // path decoded the same JSON twice on first open. The permission binder calls go to
             // IO with the rest of the open work instead of running before the first frame.
             val (name, page) = withContext(Dispatchers.IO) {
+                runCatching { EditorTempFiles.cleanup(context) }
                 runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
                 runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
                 val recent = runCatching {
@@ -357,8 +359,8 @@ class DocxEditorViewModel : ViewModel() {
                     try {
                         EditorCheckpointStore.commit(
                             context = context,
-                            sourceUri = meta.sourceUri?.toString(),
-                            displayName = meta.fileName,
+                            sourceUri = cap.identity,
+                            displayName = cap.fileName,
                             kind = "docx",
                             complete = patched,
                             originalHash = originalHash
@@ -939,14 +941,16 @@ class DocxEditorViewModel : ViewModel() {
         val doc: DocState,
         val extras: DocxWriter.Extras,
         val source: File? = null,
-        val fileName: String = "document.docx"
+        val fileName: String = "document.docx",
+        val identity: String? = null
     )
 
     internal fun saveCapture(): SaveCapture? {
         val p = pkg ?: return null
         val d = doc ?: return null
         return SaveCapture(p, d, extras(),
-            meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File), meta.fileName)
+            meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File), meta.fileName,
+            meta.sourceUri?.toString())
     }
 
     /** The save succeeded: body and package snapshots become the dirty baseline (also a test seam). */

@@ -1,5 +1,17 @@
 # HMXPDF autonomous development master log
 
+## Phase 4.1 audit round 2 — 2026-11-17 (CI pending)
+
+Source audit after the synchronization found and repaired: spreadsheet saves captured live state
+on the IO thread and acknowledged edits made during the save (now an immutable `SheetCapture`
+covers source, name, ops and identity; only an exact op match becomes the clean baseline); a
+spreadsheet save retired whatever checkpoint was newest (now `clearIfCurrent` only); interrupted
+or failed checkpoint publications left orphan generation packages and temps (now removed, and a
+successful commit prunes to one generation plus metadata); and crash-orphaned editor cache files
+were never swept (now age-bounded in `EditorTempFiles`, wired at both editor loads). Regression
+tests cover orphan cleanup, bounded storage, identity mismatch, and temp aging. No local Android
+build; CI verification is pending. Phase 4.1 is still open.
+
 ## Main synchronization — 2026-11-17
 
 GitHub default branch is `release/hmxpdf-2.1.1-build`; it carries the development work.

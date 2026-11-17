@@ -30,6 +30,10 @@ internal object EditorCheckpointStore {
     const val VERSION = 1
     private const val ROOT = "editor-checkpoints"
     private const val META = "meta.properties"
+    private val LEGACY_FILE = Regex("""checkpoint\.(docx|xlsx)""")
+    private val GENERATION_FILE = Regex("""checkpoint-[0-9a-fA-F-]{36}\.(docx|xlsx)""")
+    private val TEMP_FILE = Regex("""[0-9a-fA-F-]{36}\.tmp""")
+    private val TEMP_META = Regex("""[0-9a-fA-F-]{36}\.meta\.tmp""")
 
     /** One recoverable checkpoint: the committed package plus its identity metadata. */
     data class Checkpoint(
@@ -104,6 +108,9 @@ internal object EditorCheckpointStore {
         val target = File(dir, "checkpoint-$generationId.$kind")
         val metaTmp = File(dir, "$generationId.meta.tmp")
         val meta = File(dir, META)
+        // Set once the metadata rename makes `target` the published generation. Before that,
+        // every exit path removes `target` so interrupted commits cannot accumulate packages.
+        var published = false
         try {
             if (!dir.isDirectory && !dir.mkdirs()) return null
             copyValidated(complete, tmp, kind) ?: return null
@@ -130,16 +137,40 @@ internal object EditorCheckpointStore {
             }
             beforePublish()
             if (!metaTmp.renameTo(meta)) return null
-            return readCheckpoint(dir, kind)
+            published = true
+            val checkpoint = readCheckpoint(dir, kind)
+            // The store keeps exactly one generation per document: superseded packages are
+            // removed only after the new one is published, so an interruption always leaves the
+            // previous checkpoint intact.
+            if (checkpoint != null) prune(dir, checkpoint.file.name)
+            return checkpoint
         } catch (cancellation: java.util.concurrent.CancellationException) {
-            tmp.delete(); metaTmp.delete()
             throw cancellation
         } catch (expected: Exception) {
             // Disk-full, interruption, anything: remove our partials, leave the prior checkpoint.
-            tmp.delete(); metaTmp.delete()
             return null
+        } finally {
+            if (!published) target.delete()
+            tmp.delete()
+            metaTmp.delete()
         }
     }
+
+    /**
+     * Deletes names this store creates except [keepName] and the metadata. Superseded generations
+     * and interrupted temps are bounded storage; nothing else in the directory is touched.
+     */
+    private fun prune(dir: File, keepName: String) {
+        for (name in dir.list() ?: return) {
+            if (name == META || name == keepName) continue
+            if (!ownedName(name)) continue
+            File(dir, name).delete()
+        }
+    }
+
+    private fun ownedName(name: String): Boolean =
+        LEGACY_FILE.matches(name) || GENERATION_FILE.matches(name) ||
+            TEMP_FILE.matches(name) || TEMP_META.matches(name)
 
     /**
      * Copies [from] to [to] and validates the copy as a [kind] package *before* it can become a
@@ -172,7 +203,7 @@ internal object EditorCheckpointStore {
                 checkpoint.originalUri == identity &&
                     sha256(checkpoint.file) == checkpoint.checkpointHash &&
                     SaveRecovery.validateOfficePackage(checkpoint.file, checkpoint.kind)
-            }
+            }?.also { checkpoint -> prune(dir, checkpoint.file.name) }
         }.getOrNull()
     }
 

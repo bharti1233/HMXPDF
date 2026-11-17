@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmx.pdf.data.repository.AutosaveCoordinator
 import com.hmx.pdf.data.repository.EditorCheckpointStore
+import com.hmx.pdf.data.repository.EditorTempFiles
 import com.hmx.pdf.data.repository.LocalDocumentMirror
 import com.hmx.pdf.data.repository.RecentFile
 import com.hmx.pdf.data.repository.RecentFilesManager
@@ -99,6 +100,7 @@ class SpreadsheetViewModel : ViewModel() {
         started = true
         viewModelScope.launch {
             val name = withContext(Dispatchers.IO) {
+                runCatching { EditorTempFiles.cleanup(context) }
                 runCatching {
                     context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
@@ -243,19 +245,18 @@ class SpreadsheetViewModel : ViewModel() {
     private fun writeCheckpoint(context: Context) {
         if (!_state.value.dirty) return
         if (checkpointJob?.isActive == true) return
-        val st = _state.value
-        if (applied == lastCheckpointedOps) return
+        val capture = saveCapture() ?: return
+        if (capture.ops == lastCheckpointedOps) return
         if (!autosave.beginWrite()) return
-        val ops = applied.toList()
         checkpointJob = viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
-                    val patched = buildPatched(context) ?: return@runCatching false
+                    val patched = buildPatched(context, capture) ?: return@runCatching false
                     try {
                         EditorCheckpointStore.commit(
                             context = context,
-                            sourceUri = st.sourceUri?.toString(),
-                            displayName = st.fileName,
+                            sourceUri = capture.identity,
+                            displayName = capture.fileName,
                             kind = "xlsx",
                             complete = patched,
                             originalHash = originalHash
@@ -265,7 +266,7 @@ class SpreadsheetViewModel : ViewModel() {
                     }
                 }.getOrDefault(false)
             }
-            if (ok) lastCheckpointedOps = ops
+            if (ok) lastCheckpointedOps = capture.ops
             val followUp = autosave.endWrite(System.currentTimeMillis(), succeeded = ok)
             if (followUp != AutosaveCoordinator.NONE) {
                 autosaveJob?.cancel()
@@ -411,15 +412,33 @@ class SpreadsheetViewModel : ViewModel() {
 
     // ── saving ─────────────────────────────────────────────────────────────────
 
-    /** Writes the edited package to a cache file; null on failure. */
-    private fun buildPatched(context: Context): File? {
+    /**
+     * Everything one save serializes, captured on the owner thread: the pristine source mirror,
+     * the display name and the exact operation list. Edits made while the save runs belong to a
+     * later generation and must not leak into this output.
+     */
+    internal data class SheetCapture(
+        val source: File,
+        val fileName: String,
+        val workbook: XlsxWorkbook,
+        val ops: List<EditOp>,
+        val identity: String?
+    )
+
+    internal fun saveCapture(): SheetCapture? {
         val st = _state.value
         val wb = st.workbook ?: return null
+        if (!wb.editable) return null
         val src = st.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File) ?: return null
+        return SheetCapture(src, st.fileName, wb, applied.toList(), st.sourceUri?.toString())
+    }
+
+    /** Writes exactly [capture] to a unique cache file; null on failure. */
+    private fun buildPatched(context: Context, capture: SheetCapture): File? {
         val dir = File(context.cacheDir, "sheets").apply { mkdirs() }
-        val safe = st.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "sheet.xlsx" }
-        val out = File(dir, "edited_${System.currentTimeMillis()}_$safe")
-        return runCatching { XlsxWriter.patch(src, out, wb, applied.toList()); out }.getOrElse { out.delete(); null }
+        val out = File.createTempFile("edited-", ".xlsx", dir)
+        return runCatching { XlsxWriter.patch(capture.source, out, capture.workbook, capture.ops); out }
+            .getOrElse { out.delete(); null }
     }
 
     sealed class SaveResult {
@@ -438,16 +457,22 @@ class SpreadsheetViewModel : ViewModel() {
         val st = _state.value
         if (st.saving || !st.editable) return
         val dest = target ?: st.sourceUri ?: return onDone(SaveResult.NeedsSaveAs)
+        // Capture before suspending: the writer and the acknowledgement below speak exactly this
+        // generation, never the live session state (mirrors the DOCX editor, FA-04).
+        val capture = saveCapture() ?: return onDone(SaveResult.Failed("Couldn't write the spreadsheet."))
         _state.value = st.copy(saving = true)
         viewModelScope.launch {
+            val checkpointBeforeSave = withContext(Dispatchers.IO) {
+                capture.identity?.let { EditorCheckpointStore.find(context, it) }
+            }
             val result = withContext(Dispatchers.IO) {
-                val patched = buildPatched(context) ?: return@withContext SaveResult.Failed("Couldn't write the spreadsheet.")
+                val patched = buildPatched(context, capture) ?: return@withContext SaveResult.Failed("Couldn't write the spreadsheet.")
                 try {
                     when (val written = writeWithRecovery(
                         context = context,
                         uri = dest,
                         file = patched,
-                        displayName = st.fileName,
+                        displayName = capture.fileName,
                         requireBackup = target == null
                     )) {
                         WriteResult.Success -> SaveResult.Saved
@@ -461,18 +486,23 @@ class SpreadsheetViewModel : ViewModel() {
             }
             _state.value = _state.value.copy(saving = false)
             if (result is SaveResult.Saved) {
-                savedAt = applied.size
-                publish()
-                // The destination now holds this generation: stop checkpointing and drop the
-                // stored checkpoint (it must never outlive the save it was protecting).
-                lastCheckpointedOps = applied.toList()
-                autosave.onSaved()
-                autosaveJob?.cancel(); autosaveJob = null
-                val ctx = appContext; val key = st.sourceUri?.toString()
-                if (ctx != null && key != null) {
-                    viewModelScope.launch(Dispatchers.IO) {
-                        runCatching { EditorCheckpointStore.clear(ctx, key) }
+                if (applied == capture.ops) {
+                    // The destination now holds exactly this generation: it is the clean baseline.
+                    savedAt = applied.size
+                    publish()
+                    lastCheckpointedOps = applied.toList()
+                    autosave.onSaved()
+                    autosaveJob?.cancel(); autosaveJob = null
+                    // Retire only the checkpoint this save observed; a newer recovery copy stays.
+                    if (checkpointBeforeSave != null) {
+                        withContext(Dispatchers.IO) {
+                            EditorCheckpointStore.clearIfCurrent(context, checkpointBeforeSave)
+                        }
                     }
+                } else {
+                    // Edits arrived during the save: they are still unsaved and still protected.
+                    publish()
+                    scheduleCheckpoint()
                 }
             }
             onDone(result)
@@ -565,10 +595,16 @@ class SpreadsheetViewModel : ViewModel() {
         viewModelScope.launch {
             val out = withContext(Dispatchers.IO) {
                 runCatching {
-                    val source = if (applied.isNotEmpty()) {
-                        buildPatched(context)?.let { Uri.fromFile(it) } ?: return@runCatching null
-                    } else uri
-                    com.hmx.pdf.utils.UniversalDocumentConverter.convertToPdf(context, source)
+                    val capture = saveCapture()
+                    val patched = if (capture != null && capture.ops.isNotEmpty()) {
+                        buildPatched(context, capture) ?: return@runCatching null
+                    } else null
+                    try {
+                        val source = patched?.let { Uri.fromFile(it) } ?: uri
+                        com.hmx.pdf.utils.UniversalDocumentConverter.convertToPdf(context, source)
+                    } finally {
+                        patched?.delete()
+                    }
                 }.getOrNull()
             }
             onDone(out)
@@ -581,7 +617,9 @@ class SpreadsheetViewModel : ViewModel() {
         val hasEdits = applied.isNotEmpty()
         if (!hasEdits) return onDone(officeShareSource(false, uri) { null })
         viewModelScope.launch {
-            val out = withContext(Dispatchers.IO) { buildPatched(context)?.let { Uri.fromFile(it) } }
+            val out = withContext(Dispatchers.IO) {
+                saveCapture()?.let { capture -> buildPatched(context, capture)?.let { Uri.fromFile(it) } }
+            }
             onDone(officeShareSource(true, uri) { out })
         }
     }
