@@ -122,7 +122,11 @@ class AndroidSpellEngine(context: Context) : SpellEngine,
                 if (pending === p) pending = null
             }
             runCatching {
-                s.getSuggestions(words.map { android.view.textservice.TextInfo(it) }.toTypedArray(), MAX_SUGGESTIONS)
+                s.getSuggestions(
+                    words.map { android.view.textservice.TextInfo(it) }.toTypedArray(),
+                    MAX_SUGGESTIONS,
+                    false
+                )
             }.onFailure {
                 pending = null
                 if (cont.isActive) cont.resume(emptyMap())

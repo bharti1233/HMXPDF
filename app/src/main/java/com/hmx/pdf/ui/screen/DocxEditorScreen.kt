@@ -2464,7 +2464,7 @@ private fun ParagraphBlock(
         Column(
             Modifier
                 .fillMaxWidth()
-                .then(if (env.readingId == para.id) Modifier.background(accent.copy(alpha = 0.16f)) else Modifier)
+                .then(if (env.readingId == para.id) Modifier.background(env.accent.copy(alpha = 0.16f)) else Modifier)
                 .padding(top = if (spaceTop) pl.before else 0.dp, bottom = if (spaceBottom) pl.after else 0.dp)
                 .then(if (pl.shading != null) Modifier.background(pl.shading) else Modifier)
                 .padding(start = pl.padStart, end = pl.padEnd)
