@@ -3,6 +3,7 @@ package com.hmx.pdf.spell
 import com.hmx.pdf.docx.DocPara
 import com.hmx.pdf.docx.DocState
 import com.hmx.pdf.docx.forEachPara
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -148,7 +149,15 @@ object SpellCheck {
         }
         for (chunk in pending.toList().chunked(CHUNK)) {
             currentCoroutineContext().ensureActive()
-            val answer = runCatching { engine.suggest(chunk) }.getOrDefault(emptyMap())
+            // Cancellation must propagate: swallowing it here would let a cancelled scan finish and
+            // publish suggestions the caller already abandoned.
+            val answer = try {
+                engine.suggest(chunk)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyMap()
+            }
             for (word in chunk) {
                 // A missing answer is cached as "no suggestions" to avoid asking again this session.
                 val suggestions = answer[word] ?: emptyList()

@@ -119,7 +119,7 @@ class ReadingSession(private val engine: TtsEngine) {
     }
 
     fun setRate(rate: Float) {
-        engine.rate = rate
+        engine.rate = rate.coerceIn(0.5f, 2f)
         changed()
     }
 
