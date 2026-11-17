@@ -79,6 +79,7 @@ import androidx.compose.material.icons.rounded.ChangeHistory
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FontDownload
@@ -181,6 +182,7 @@ import com.hmx.pdf.docx.DocRaw
 import com.hmx.pdf.docx.DocRow
 import com.hmx.pdf.docx.DocState
 import com.hmx.pdf.docx.DocTable
+import com.hmx.pdf.docx.DocxTables
 import com.hmx.pdf.docx.DocxEdits
 import com.hmx.pdf.docx.DocxObjects
 import com.hmx.pdf.docx.DocxPackage
@@ -244,7 +246,7 @@ private val PaperCorner = 6.dp
 private val DeskGutter = 8.dp
 private val PageGap = 14.dp
 
-private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS }
+private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE }
 
 /** Formatting chosen with nothing selected: it applies to what is typed next at [at]. */
 private class Pending(val paraId: Long, val at: Int, val fmt: CharFmt)
@@ -1128,6 +1130,7 @@ private fun DocxEditorContent(
                     GlassToolButton(Icons.Rounded.RateReview, stringResource(R.string.docx_add_comment), panel == DocPanel.COMMENTS, { panel = if (panel == DocPanel.COMMENTS) DocPanel.NONE else DocPanel.COMMENTS }, enabled = has, accent = accent)
                     GlassToolButton(Icons.Rounded.ChangeHistory, stringResource(R.string.docx_revisions), panel == DocPanel.REVISIONS, { panel = if (panel == DocPanel.REVISIONS) DocPanel.NONE else DocPanel.REVISIONS }, enabled = has, accent = accent)
                     GlassToolButton(Icons.Rounded.Settings, stringResource(R.string.docx_page_setup), panel == DocPanel.LAYOUT, { panel = if (panel == DocPanel.LAYOUT) DocPanel.NONE else DocPanel.LAYOUT }, enabled = pkg != null, accent = accent)
+                    GlassToolButton(Icons.Rounded.TableChart, stringResource(R.string.docx_table), panel == DocPanel.TABLE, { panel = if (panel == DocPanel.TABLE) DocPanel.NONE else DocPanel.TABLE }, enabled = pkg != null, accent = accent)
                     GlassToolButton(
                         when (align) {
                             "center" -> Icons.Rounded.FormatAlignCenter
@@ -1777,6 +1780,194 @@ private fun DocxEditorContent(
             }
         }
 
+        // Advanced tables (Phase 4.2): create a table, or edit the focused cell's table. Structural
+        // edits are gated on Edit Mode and refused while Track Changes is on (the kernels state the
+        // same rule independently).
+        if (panel == DocPanel.TABLE) {
+            val live = viewModel.editMode && viewModel.editable && !viewModel.tracking
+            val location = viewModel.tableLocation(focusedField)
+            val table = location?.table
+            val simple = table != null && DocxTables.structuralSafe(table)
+            val positions = table?.let { DocxTables.positions(it) }
+            val cellPos = positions?.firstOrNull { it.cell.id == location?.cell?.id }
+            val rowCount = table?.rows?.size ?: 0
+            val colCount = table?.let { DocxTables.columnCount(it) } ?: 0
+            val col = cellPos?.start ?: 0
+            var newRows by remember { mutableIntStateOf(3) }
+            var newCols by remember { mutableIntStateOf(3) }
+            GlassDialog(
+                visible = true,
+                onDismiss = { panel = DocPanel.NONE },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_table)
+            ) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (!live) BasicText(
+                        stringResource(
+                            if (viewModel.editMode) R.string.docx_table_locked
+                            else R.string.docx_table_view
+                        ),
+                        style = TextStyle(sub, 12.sp, FontWeight.Medium)
+                    )
+                    if (table != null && location != null) {
+                        BasicText(
+                            stringResource(
+                                R.string.docx_table_position,
+                                location.rowIndex + 1, rowCount, col + 1
+                            ),
+                            style = TextStyle(sub, 12.sp)
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BasicText(
+                            stringResource(R.string.docx_table_insert),
+                            style = TextStyle(text, 15.sp, FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
+                        TableStepper(newRows, 1, 20) { newRows = it }
+                        TableStepper(newCols, 1, 10) { newCols = it }
+                        TableAction(stringResource(R.string.docx_table_insert), live) {
+                            if (viewModel.insertTable(newRows, newCols, focusedField)) {
+                                panel = DocPanel.NONE
+                            }
+                        }
+                    }
+                    if (table != null && location != null) {
+                        if (!simple) BasicText(
+                            stringResource(R.string.docx_table_complex),
+                            style = TextStyle(sub, 12.sp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(stringResource(R.string.sheet_insert_row_above), live && simple) {
+                                viewModel.insertTableRow(table.id, location.rowIndex)
+                            }
+                            TableAction(stringResource(R.string.sheet_insert_row_below), live && simple) {
+                                viewModel.insertTableRow(table.id, location.rowIndex + 1)
+                            }
+                            TableAction(
+                                stringResource(R.string.sheet_delete_rows),
+                                live && simple && rowCount > 1
+                            ) { viewModel.deleteTableRow(table.id, location.rowIndex) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(stringResource(R.string.sheet_insert_col_left), live && simple) {
+                                viewModel.insertTableColumn(table.id, col)
+                            }
+                            TableAction(stringResource(R.string.sheet_insert_col_right), live && simple) {
+                                viewModel.insertTableColumn(table.id, col + 1)
+                            }
+                            TableAction(
+                                stringResource(R.string.sheet_delete_cols),
+                                live && simple && colCount > 1
+                            ) { viewModel.deleteTableColumn(table.id, col) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(
+                                stringResource(R.string.docx_table_merge_right),
+                                live && simple && col + 1 < colCount
+                            ) { viewModel.mergeTableCells(table.id, location.cell.id, 1, 2) }
+                            TableAction(
+                                stringResource(R.string.docx_table_merge_down),
+                                live && simple && location.rowIndex + 1 < rowCount
+                            ) { viewModel.mergeTableCells(table.id, location.cell.id, 2, 1) }
+                            TableAction(
+                                stringResource(R.string.docx_table_merge_block),
+                                live && simple && location.rowIndex + 1 < rowCount && col + 1 < colCount
+                            ) { viewModel.mergeTableCells(table.id, location.cell.id, 2, 2) }
+                            TableAction(
+                                stringResource(R.string.docx_table_split),
+                                live && cellPos != null &&
+                                    (cellPos.span > 1 || cellPos.vMerge != DocxTables.VMerge.NONE)
+                            ) { viewModel.splitTableCell(table.id, location.cell.id) }
+                        }
+                        BasicText(
+                            stringResource(R.string.docx_table_shading),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TableSwatch(null, live) {
+                                viewModel.shadeTableCell(table.id, location.cell.id, null)
+                            }
+                            for (fill in listOf("#FFF2CC", "#E2EFDA", "#DDEBF7")) {
+                                TableSwatch(fill, live) {
+                                    viewModel.shadeTableCell(table.id, location.cell.id, fill)
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(stringResource(R.string.docx_table_borders), live) {
+                                viewModel.setTableCellBorders(
+                                    table.id, location.cell.id,
+                                    !location.cell.tcPr.contains("tcBorders")
+                                )
+                            }
+                            TableAction(stringResource(R.string.docx_table_grid_borders), live) {
+                                viewModel.setTableBorders(table.id, !table.tblPr.contains("tblBorders"))
+                            }
+                        }
+                        BasicText(
+                            stringResource(R.string.docx_table_margins),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            for (v in listOf(0, 72, 144)) {
+                                TableAction("${v / 1440.0}\u2033", live) {
+                                    viewModel.setTableCellMargins(table.id, location.cell.id, v)
+                                }
+                            }
+                        }
+                        BasicText(
+                            stringResource(R.string.docx_table_width_label),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            for (v in listOf(1440, 2880, 4320)) {
+                                TableAction("${v / 1440}\u2033", live) {
+                                    viewModel.setTableCellWidth(table.id, location.cell.id, v)
+                                }
+                            }
+                        }
+                        BasicText(
+                            stringResource(R.string.docx_table_height_label),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(stringResource(R.string.sheet_automatic), live) {
+                                viewModel.setTableRowHeight(table.id, location.rowIndex, null)
+                            }
+                            TableAction("0.4\u2033", live) {
+                                viewModel.setTableRowHeight(table.id, location.rowIndex, 576)
+                            }
+                        }
+                        BasicText(
+                            stringResource(R.string.docx_table_alignment),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TableAction(stringResource(R.string.sheet_align_left), live) {
+                                viewModel.setTableAlignment(table.id, "left")
+                            }
+                            TableAction(stringResource(R.string.sheet_align_center), live) {
+                                viewModel.setTableAlignment(table.id, "center")
+                            }
+                            TableAction(stringResource(R.string.sheet_align_right), live) {
+                                viewModel.setTableAlignment(table.id, "right")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Header/footer part editing: the referenced part's paragraphs as plain fields; the VM op
         // re-serializes through the same paragraph kernel the body uses, so rPr/objects survive.
         if (panel == DocPanel.HEADERS) {
@@ -2343,4 +2534,53 @@ private fun TableRowBlock(table: DocTable, row: DocRow, rowIndex: Int, look: Doc
             if (used < tl.fractions.size) Spacer(Modifier.weight(frac(used, tl.fractions.size - used)))
         }
     }
+}
+
+/** A compact action chip for the table panel (Phase 4.2). */
+@Composable
+private fun TableAction(label: String, enabled: Boolean, onClick: () -> Unit) {
+    BasicText(
+        label,
+        style = TextStyle(
+            Color.White.copy(alpha = if (enabled) 0.92f else 0.35f),
+            13.sp,
+            FontWeight.Medium
+        ),
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White.copy(alpha = if (enabled) 0.10f else 0.04f))
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 10.dp, vertical = 7.dp)
+    )
+}
+
+@Composable
+private fun TableStepper(value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        TableAction("\u2212", value > min) { onChange(value - 1) }
+        BasicText(
+            "$value",
+            style = TextStyle(Color.White.copy(alpha = 0.92f), 14.sp, FontWeight.SemiBold)
+        )
+        TableAction("+", value < max) { onChange(value + 1) }
+    }
+}
+
+/** A fill swatch; [fill] null means "no shading". */
+@Composable
+private fun TableSwatch(fill: String?, enabled: Boolean, onClick: () -> Unit) {
+    val color = fill?.let {
+        runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull()
+    }
+    Box(
+        Modifier
+            .size(26.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(color ?: Color.White.copy(alpha = if (enabled) 0.08f else 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+            .clickable(enabled = enabled) { onClick() }
+    )
 }

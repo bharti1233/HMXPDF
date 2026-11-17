@@ -1061,4 +1061,23 @@
     <string name="docx_hf_hint">Введите текст колонтитула…</string>
     <string name="docx_hf_fieldlocked">(недоступно для изменения)</string>
 
+    <string name="docx_table">Таблица</string>
+    <string name="docx_table_insert">Вставить таблицу</string>
+    <string name="docx_table_rows">Строки</string>
+    <string name="docx_table_cols">Столбцы</string>
+    <string name="docx_table_position">Строка %1$d из %2$d, столбец %3$d</string>
+    <string name="docx_table_view">Переключитесь в режим редактирования, чтобы изменить таблицу.</string>
+    <string name="docx_table_locked">Режим исправлений включён. Отключите его, чтобы изменить структуру таблицы.</string>
+    <string name="docx_table_merge_right">Объединить вправо</string>
+    <string name="docx_table_merge_down">Объединить вниз</string>
+    <string name="docx_table_merge_block">Объединить 2×2</string>
+    <string name="docx_table_split">Разделить ячейку</string>
+    <string name="docx_table_shading">Заливка</string>
+    <string name="docx_table_borders">Границы ячейки</string>
+    <string name="docx_table_grid_borders">Границы таблицы</string>
+    <string name="docx_table_margins">Отступы ячейки</string>
+    <string name="docx_table_width_label">Ширина ячейки</string>
+    <string name="docx_table_height_label">Высота строки</string>
+    <string name="docx_table_alignment">Выравнивание таблицы</string>
+    <string name="docx_table_complex">Структурные изменения недоступны для сетки этой таблицы.</string>
 </resources>

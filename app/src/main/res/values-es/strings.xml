@@ -1056,4 +1056,23 @@
     <string name="docx_hf_hint">Escribe el texto del encabezado…</string>
     <string name="docx_hf_fieldlocked">(no editable)</string>
 
+    <string name="docx_table">Tabla</string>
+    <string name="docx_table_insert">Insertar tabla</string>
+    <string name="docx_table_rows">Filas</string>
+    <string name="docx_table_cols">Columnas</string>
+    <string name="docx_table_position">Fila %1$d de %2$d, columna %3$d</string>
+    <string name="docx_table_view">Cambia a Modo de edición para modificar esta tabla.</string>
+    <string name="docx_table_locked">El control de cambios está activado. Desactívalo para cambiar la estructura de la tabla.</string>
+    <string name="docx_table_merge_right">Combinar a la derecha</string>
+    <string name="docx_table_merge_down">Combinar hacia abajo</string>
+    <string name="docx_table_merge_block">Combinar 2×2</string>
+    <string name="docx_table_split">Dividir celda</string>
+    <string name="docx_table_shading">Sombreado</string>
+    <string name="docx_table_borders">Bordes de celda</string>
+    <string name="docx_table_grid_borders">Bordes de tabla</string>
+    <string name="docx_table_margins">Márgenes de celda</string>
+    <string name="docx_table_width_label">Ancho de celda</string>
+    <string name="docx_table_height_label">Alto de fila</string>
+    <string name="docx_table_alignment">Alineación de tabla</string>
+    <string name="docx_table_complex">Las ediciones estructurales no están disponibles para la cuadrícula de esta tabla.</string>
 </resources>

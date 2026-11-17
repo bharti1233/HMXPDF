@@ -23,6 +23,8 @@ import com.hmx.pdf.docx.OBJ_CHAR
 import com.hmx.pdf.docx.PageSetup
 import com.hmx.pdf.docx.DocPara
 import com.hmx.pdf.docx.DocState
+import com.hmx.pdf.docx.DocTable
+import com.hmx.pdf.docx.DocxTables
 import com.hmx.pdf.docx.DocxComments
 import com.hmx.pdf.docx.DocxEdits
 import com.hmx.pdf.docx.DocxPackage
@@ -764,6 +766,102 @@ class DocxEditorViewModel : ViewModel() {
     }
 
     private fun hnBreakFmt() = CharFmt(rPr = "", link = null, obj = DocxPageLayout.PAGE_BREAK_OBJ)
+
+    // ── tables (Phase 4.2) ─────────────────────────────────────────────────────
+
+    /** The table, row and cell that own the focused paragraph, if it sits in a cell. */
+    fun tableLocation(paraId: Long?): DocxTables.Location? {
+        val d = doc ?: return null
+        return paraId?.let { DocxTables.locate(d.blocks, it) }
+    }
+
+    /**
+     * Structural table edits are never tracked: the editor has no flattened revision semantics
+     * for grid changes, so Track Changes refuses them instead of writing an invalid table.
+     */
+    private fun canEditTable(): Boolean = editMode && editable && !tracking
+
+    private fun containsPara(blocks: List<DocBlock>, id: Long): Boolean {
+        for (b in blocks) {
+            if (b is DocPara && b.id == id) return true
+            if (b is DocTable) for (row in b.rows) for (cell in row.cells) {
+                if (containsPara(cell.blocks, id)) return true
+            }
+        }
+        return false
+    }
+
+    /** Body position for a new table: after the focused paragraph, never nested inside a cell. */
+    private fun insertIndexFor(blocks: List<DocBlock>, focusId: Long?): Int {
+        if (focusId == null) return blocks.size
+        for ((i, b) in blocks.withIndex()) {
+            if (b is DocPara && b.id == focusId) return i + 1
+            if (b is DocTable && containsPara(listOf(b), focusId)) return i + 1
+        }
+        return blocks.size
+    }
+
+    fun insertTable(rows: Int, cols: Int, focusId: Long? = null): Boolean {
+        if (!canEditTable()) return false
+        val d = doc ?: return false
+        val blocks = DocxTables.create(d.blocks, insertIndexFor(d.blocks, focusId), rows, cols) ?: return false
+        lastKey = null
+        commit(DocState(blocks))
+        return true
+    }
+
+    /**
+     * Applies one table kernel to the addressed table. The kernel is immutable and refuses unsafe
+     * grids, so a refused edit leaves the document (and its dirty state) untouched.
+     */
+    private fun updateTable(tableId: Long, f: (DocTable) -> DocTable?): Boolean {
+        if (!canEditTable()) return false
+        val d = doc ?: return false
+        val blocks = DocxTables.mapTable(d.blocks, tableId, f) ?: return false
+        if (blocks === d.blocks) return false
+        lastKey = null
+        commit(DocState(blocks))
+        return true
+    }
+
+    fun insertTableRow(tableId: Long, at: Int): Boolean =
+        updateTable(tableId) { DocxTables.insertRow(it, at) }
+
+    fun deleteTableRow(tableId: Long, at: Int): Boolean =
+        updateTable(tableId) { DocxTables.deleteRow(it, at) }
+
+    fun insertTableColumn(tableId: Long, at: Int): Boolean =
+        updateTable(tableId) { DocxTables.insertColumn(it, at) }
+
+    fun deleteTableColumn(tableId: Long, at: Int): Boolean =
+        updateTable(tableId) { DocxTables.deleteColumn(it, at) }
+
+    fun mergeTableCells(tableId: Long, cellId: Long, rowSpan: Int, colSpan: Int): Boolean =
+        updateTable(tableId) { DocxTables.mergeRange(it, cellId, rowSpan, colSpan) }
+
+    fun splitTableCell(tableId: Long, cellId: Long): Boolean =
+        updateTable(tableId) { DocxTables.split(it, cellId) }
+
+    fun shadeTableCell(tableId: Long, cellId: Long, fill: String?): Boolean =
+        updateTable(tableId) { DocxTables.shade(it, cellId, fill) }
+
+    fun setTableCellBorders(tableId: Long, cellId: Long, on: Boolean): Boolean =
+        updateTable(tableId) { DocxTables.cellBorders(it, cellId, on) }
+
+    fun setTableCellMargins(tableId: Long, cellId: Long, twips: Int): Boolean =
+        updateTable(tableId) { DocxTables.cellMargins(it, cellId, twips) }
+
+    fun setTableCellWidth(tableId: Long, cellId: Long, twips: Int): Boolean =
+        updateTable(tableId) { DocxTables.cellWidth(it, cellId, twips) }
+
+    fun setTableRowHeight(tableId: Long, rowIndex: Int, twips: Int?): Boolean =
+        updateTable(tableId) { DocxTables.rowHeight(it, rowIndex, twips) }
+
+    fun setTableBorders(tableId: Long, on: Boolean): Boolean =
+        updateTable(tableId) { DocxTables.tableBorders(it, on) }
+
+    fun setTableAlignment(tableId: Long, jc: String?): Boolean =
+        updateTable(tableId) { DocxTables.tableAlignment(it, jc) }
 
     /** Toggles the settings-level odd/even headers flag (settings.xml is spliced at save). */
     fun setEvenOddHeaders(on: Boolean) {

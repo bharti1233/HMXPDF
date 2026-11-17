@@ -1031,4 +1031,23 @@
     <string name="docx_hf_hint">اكتب نص الترويسة…</string>
     <string name="docx_hf_fieldlocked">(غير قابل للتحرير)</string>
 
+    <string name="docx_table">جدول</string>
+    <string name="docx_table_insert">إدراج جدول</string>
+    <string name="docx_table_rows">الصفوف</string>
+    <string name="docx_table_cols">الأعمدة</string>
+    <string name="docx_table_position">الصف %1$d من %2$d، العمود %3$d</string>
+    <string name="docx_table_view">بدّل إلى وضع التحرير لتغيير هذا الجدول.</string>
+    <string name="docx_table_locked">تتبع التغييرات مفعّل. أوقفه لتغيير بنية الجدول.</string>
+    <string name="docx_table_merge_right">دمج إلى اليمين</string>
+    <string name="docx_table_merge_down">دمج إلى الأسفل</string>
+    <string name="docx_table_merge_block">دمج 2×2</string>
+    <string name="docx_table_split">تقسيم الخلية</string>
+    <string name="docx_table_shading">التظليل</string>
+    <string name="docx_table_borders">حدود الخلية</string>
+    <string name="docx_table_grid_borders">حدود الجدول</string>
+    <string name="docx_table_margins">هوامش الخلية</string>
+    <string name="docx_table_width_label">عرض الخلية</string>
+    <string name="docx_table_height_label">ارتفاع الصف</string>
+    <string name="docx_table_alignment">محاذاة الجدول</string>
+    <string name="docx_table_complex">التعديلات البنيوية غير متاحة لشبكة هذا الجدول.</string>
 </resources>

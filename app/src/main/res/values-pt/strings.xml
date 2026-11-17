@@ -1054,4 +1054,23 @@
     <string name="docx_hf_hint">Escreva o texto do cabeçalho…</string>
     <string name="docx_hf_fieldlocked">(não editável)</string>
 
+    <string name="docx_table">Tabela</string>
+    <string name="docx_table_insert">Inserir tabela</string>
+    <string name="docx_table_rows">Linhas</string>
+    <string name="docx_table_cols">Colunas</string>
+    <string name="docx_table_position">Linha %1$d de %2$d, coluna %3$d</string>
+    <string name="docx_table_view">Mude para o Modo de edição para alterar esta tabela.</string>
+    <string name="docx_table_locked">O controlo de alterações está ativo. Desative-o para alterar a estrutura da tabela.</string>
+    <string name="docx_table_merge_right">Unir à direita</string>
+    <string name="docx_table_merge_down">Unir para baixo</string>
+    <string name="docx_table_merge_block">Unir 2×2</string>
+    <string name="docx_table_split">Dividir célula</string>
+    <string name="docx_table_shading">Sombreado</string>
+    <string name="docx_table_borders">Limites da célula</string>
+    <string name="docx_table_grid_borders">Limites da tabela</string>
+    <string name="docx_table_margins">Margens da célula</string>
+    <string name="docx_table_width_label">Largura da célula</string>
+    <string name="docx_table_height_label">Altura da linha</string>
+    <string name="docx_table_alignment">Alinhamento da tabela</string>
+    <string name="docx_table_complex">As edições estruturais não estão disponíveis para a grelha desta tabela.</string>
 </resources>

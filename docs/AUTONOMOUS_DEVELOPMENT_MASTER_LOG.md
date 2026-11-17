@@ -1,5 +1,17 @@
 # HMXPDF autonomous development master log
 
+## Phase 4.2 implementation — 2026-11-17 (CI pending)
+
+Advanced tables: immutable `DocxTables` kernels (grid validation, table creation, row/column
+insert and delete, rectangular merge/split, shading, borders, margins, width, row height and
+alignment), schema-ordered `tblPr`/`trPr`/`tcPr` property splices in `DocxProps`, view-model
+commands gated on `editMode && editable && !tracking`, and a table panel localized in all seven
+locales. The kernels refuse `DocRaw` children, gridBefore/gridAfter, hMerge, irregular grids and
+revision-bearing tables; merges preserve covered content on the anchor instead of dropping it.
+JVM tests cover grid invariants, content conservation, writer→reader round trip, revision refusal
+(without false positives from `insideH`/`insideV`) and property ordering. No local Android build;
+CI verification is pending. Per instruction, `main` is intentionally not pushed.
+
 ## Phase 4.1 complete — 2026-11-17
 
 Final head `0d72242`; CI run 44044415038 success (build, release, release-guard), checked-out

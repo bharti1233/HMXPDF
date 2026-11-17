@@ -1061,4 +1061,23 @@
     <string name="docx_hf_hint">Digita il testo dell\'intestazione…</string>
     <string name="docx_hf_fieldlocked">(non modificabile)</string>
 
+    <string name="docx_table">Tabella</string>
+    <string name="docx_table_insert">Inserisci tabella</string>
+    <string name="docx_table_rows">Righe</string>
+    <string name="docx_table_cols">Colonne</string>
+    <string name="docx_table_position">Riga %1$d di %2$d, colonna %3$d</string>
+    <string name="docx_table_view">Passa alla Modalità modifica per modificare questa tabella.</string>
+    <string name="docx_table_locked">Il rilevamento modifiche è attivo. Disattivalo per cambiare la struttura della tabella.</string>
+    <string name="docx_table_merge_right">Unisci a destra</string>
+    <string name="docx_table_merge_down">Unisci in basso</string>
+    <string name="docx_table_merge_block">Unisci 2×2</string>
+    <string name="docx_table_split">Dividi cella</string>
+    <string name="docx_table_shading">Sfondo</string>
+    <string name="docx_table_borders">Bordi cella</string>
+    <string name="docx_table_grid_borders">Bordi tabella</string>
+    <string name="docx_table_margins">Margini cella</string>
+    <string name="docx_table_width_label">Larghezza cella</string>
+    <string name="docx_table_height_label">Altezza riga</string>
+    <string name="docx_table_alignment">Allineamento tabella</string>
+    <string name="docx_table_complex">Le modifiche strutturali non sono disponibili per la griglia di questa tabella.</string>
 </resources>

@@ -249,6 +249,33 @@ internal object Props {
     fun setR(rPr: String, local: String, element: String?) = setChild(rPr, "w:rPr", RPR_ORDER, local, element)
     fun setP(pPr: String, local: String, element: String?) = setChild(pPr, "w:pPr", PPR_ORDER, local, element)
 
+    /** ECMA-376 CT_TblPr, CT_TrPr and CT_TcPr child sequences (Word rejects reordering). */
+    val TBLPR_ORDER = listOf(
+        "tblStyle", "tblpPr", "tblOverlap", "bidiVisual", "tblStyleRowBandSize",
+        "tblStyleColBandSize", "tblW", "jc", "tblCellSpacing", "tblInd", "tblBorders", "shd",
+        "tblLayout", "tblCellMar", "tblLook", "tblCaption", "tblDescription", "tblPrChange"
+    )
+
+    val TRPR_ORDER = listOf(
+        "cnfStyle", "divId", "gridBefore", "gridAfter", "wBefore", "wAfter", "cantSplit",
+        "trHeight", "tblHeader", "tblCellSpacing", "jc", "hidden", "ins", "del", "trPrChange"
+    )
+
+    val TCPR_ORDER = listOf(
+        "cnfStyle", "tcW", "gridSpan", "hMerge", "vMerge", "tcBorders", "shd", "noWrap",
+        "tcMar", "textDirection", "tcFitText", "vAlign", "hideMark", "headers", "cellIns",
+        "cellDel", "cellMerge", "tcPrChange"
+    )
+
+    fun setTbl(tblPr: String, local: String, element: String?) =
+        setChild(tblPr, "w:tblPr", TBLPR_ORDER, local, element)
+
+    fun setTr(trPr: String, local: String, element: String?) =
+        setChild(trPr, "w:trPr", TRPR_ORDER, local, element)
+
+    fun setTc(tcPr: String, local: String, element: String?) =
+        setChild(tcPr, "w:tcPr", TCPR_ORDER, local, element)
+
     /** ECMA-376 CT_SectPr child sequence (Word rejects these out of order like pPr children). */
     val SECTPR_ORDER = listOf(
         "headerReference", "footerReference", "footnotePr", "endnotePr", "type", "pgSz", "pgMar",

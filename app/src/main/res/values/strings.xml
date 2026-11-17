@@ -1059,4 +1059,23 @@
     <string name="motion_reset">Reset motion</string>
     <string name="settings_invert_share_morph">Swap share and open</string>
     <string name="settings_invert_share_morph_desc">In the viewer, tap the round button to share the document and press, hold and swipe up to open another file.</string>
+    <string name="docx_table">Table</string>
+    <string name="docx_table_insert">Insert table</string>
+    <string name="docx_table_rows">Rows</string>
+    <string name="docx_table_cols">Columns</string>
+    <string name="docx_table_position">Row %1$d of %2$d, column %3$d</string>
+    <string name="docx_table_view">Switch to Edit Mode to change this table.</string>
+    <string name="docx_table_locked">Track Changes is on. Turn it off to change table structure.</string>
+    <string name="docx_table_merge_right">Merge right</string>
+    <string name="docx_table_merge_down">Merge down</string>
+    <string name="docx_table_merge_block">Merge 2×2</string>
+    <string name="docx_table_split">Split cell</string>
+    <string name="docx_table_shading">Shading</string>
+    <string name="docx_table_borders">Cell borders</string>
+    <string name="docx_table_grid_borders">Table borders</string>
+    <string name="docx_table_margins">Cell margins</string>
+    <string name="docx_table_width_label">Cell width</string>
+    <string name="docx_table_height_label">Row height</string>
+    <string name="docx_table_alignment">Table alignment</string>
+    <string name="docx_table_complex">Structural edits are unavailable for this table's grid.</string>
 </resources>
