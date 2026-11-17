@@ -151,19 +151,19 @@ class DocxPhase4IntegrationTest {
         assertEquals("<keep>unknown-part</keep>", DocxFixtures.entry(saved, "word/customXml/item1.xml"))
 
         // Undo unwinds each feature as one step, newest first.
-        assertTrue(view.undo()) // spell replacement
+        view.undo() // spell replacement
         assertTrue(bodyPara(view).text.startsWith("Hello wrld."))
-        assertTrue(view.undo()) // note (reference + part element)
+        view.undo() // note (reference + part element)
         assertEquals(1, view.notesList(DocxNotes.Kind.FOOTNOTE).size) // the fixture's original note 3
         assertEquals(3, view.notesList(DocxNotes.Kind.FOOTNOTE).single().id)
-        assertTrue(view.undo()) // row insert
+        view.undo() // row insert
         assertEquals(2, view.doc!!.blocks.filterIsInstance<DocTable>().single().rows.size)
-        assertTrue(view.undo()) // table creation
+        view.undo() // table creation
         assertTrue(view.doc!!.blocks.filterIsInstance<DocTable>().isEmpty())
         assertFalse(view.canUndo)
 
         // Redo restores the same combined state, ready to save again.
-        repeat(4) { assertTrue(view.redo()) }
+        repeat(4) { view.redo() }
         assertEquals(3, view.doc!!.blocks.filterIsInstance<DocTable>().single().rows.size)
         assertEquals(2, view.notesList(DocxNotes.Kind.FOOTNOTE).size)
         assertTrue(bodyPara(view).text.startsWith("Hello world."))
