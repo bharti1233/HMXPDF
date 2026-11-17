@@ -18,7 +18,7 @@ internal object EditorTempFiles {
     internal const val RECOVERED_MAX_AGE_MS = 24L * 60L * 60L * 1000L
 
     fun cleanup(context: Context, now: Long = System.currentTimeMillis()) {
-        cleanup(File(context.cacheDir), now)
+        cleanup(context.cacheDir, now)
     }
 
     internal fun cleanup(cacheDir: File, now: Long) {
