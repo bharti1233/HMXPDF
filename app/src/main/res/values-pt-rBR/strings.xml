@@ -1070,4 +1070,14 @@
     <string name="docx_table_height_label">Altura da linha</string>
     <string name="docx_table_alignment">Alinhamento da tabela</string>
     <string name="docx_table_complex">As edições estruturais não estão disponíveis para a grade desta tabela.</string>
+    <string name="docx_notes">Notas de rodapé e finais</string>
+    <string name="docx_note_footnote">Nota de rodapé</string>
+    <string name="docx_note_endnote">Nota final</string>
+    <string name="docx_note_insert_footnote">Inserir nota de rodapé</string>
+    <string name="docx_note_insert_endnote">Inserir nota final</string>
+    <string name="docx_note_hint">A nota é adicionada ao parágrafo em foco. Escreva abaixo.</string>
+    <string name="docx_note_view">Mude para o Modo de edição para alterar as notas.</string>
+    <string name="docx_note_locked">O controle de alterações está ativado. Desative-o para alterar as notas.</string>
+    <string name="docx_note_empty">Ainda não há notas.</string>
+    <string name="docx_note_remove">Remover</string>
 </resources>

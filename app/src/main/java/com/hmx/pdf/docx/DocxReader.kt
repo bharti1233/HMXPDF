@@ -39,6 +39,8 @@ class DocxPackage(
     /** `word/settings.xml` xml (for `w:evenAndOddHeaders`), null when the part doesn't exist. */
     val settingsPath: String? = null,
     val settings: String? = null,
+    /** Footnote/endnote parts: parsed notes plus their raw XML, untouched until a note is edited. */
+    val notes: DocxNotes = DocxNotes.EMPTY,
     /** False for documents this editor can show but can't safely write (Strict OOXML, odd prefixes). */
     val writable: Boolean
 ) {
@@ -115,6 +117,10 @@ object DocxReader {
             .associate { (path, _) -> path to (parts[path] ?: "") }
         val settingsPath = rels.firstOrNull { it.type.endsWith("/settings") && !it.external }?.target
             ?: "$dir/settings.xml".takeIf { parts.containsKey(it) }
+        val footnotePath = rels.firstOrNull { it.type.endsWith("/footnotes") && !it.external }?.target
+            ?: join(dir, "footnotes.xml").takeIf { parts.containsKey(it) }
+        val endnotePath = rels.firstOrNull { it.type.endsWith("/endnotes") && !it.external }?.target
+            ?: join(dir, "endnotes.xml").takeIf { parts.containsKey(it) }
 
         val pkg = DocxPackage(
             mainPath = mainPath,
@@ -137,6 +143,10 @@ object DocxReader {
             hfParts = hfParts,
             settingsPath = settingsPath,
             settings = settingsPath?.let { parts[it] },
+            notes = DocxNotes.parse(
+                footnotePath, footnotePath?.let { parts[it] },
+                endnotePath, endnotePath?.let { parts[it] }
+            ),
             writable = writable
         )
         return pkg to DocState(blocks)

@@ -1080,4 +1080,14 @@
     <string name="docx_table_height_label">Высота строки</string>
     <string name="docx_table_alignment">Выравнивание таблицы</string>
     <string name="docx_table_complex">Структурные изменения недоступны для сетки этой таблицы.</string>
+    <string name="docx_notes">Сноски и концевые сноски</string>
+    <string name="docx_note_footnote">Сноска</string>
+    <string name="docx_note_endnote">Концевая сноска</string>
+    <string name="docx_note_insert_footnote">Вставить сноску</string>
+    <string name="docx_note_insert_endnote">Вставить концевую сноску</string>
+    <string name="docx_note_hint">Сноска добавляется к выбранному абзацу. Введите текст ниже.</string>
+    <string name="docx_note_view">Переключитесь в режим редактирования, чтобы изменить сноски.</string>
+    <string name="docx_note_locked">Режим исправлений включён. Отключите его, чтобы изменить сноски.</string>
+    <string name="docx_note_empty">Сносок пока нет.</string>
+    <string name="docx_note_remove">Удалить</string>
 </resources>

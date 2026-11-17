@@ -20,6 +20,8 @@ object DocxWriter {
     private const val SETTINGS_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings"
     private const val HF_HEADER_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/header"
     private const val HF_FOOTER_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer"
+    private const val FOOTNOTES_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes"
+    private const val ENDNOTES_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes"
     private const val W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
     fun write(pkg: DocxPackage, state: DocState, source: File, dest: File, extras: Extras = Extras()) {
@@ -41,7 +43,9 @@ object DocxWriter {
         val hfRelIds: Map<String, String> = emptyMap(),
         val settings: String? = null,
         /** `path → original root start tag` for edited existing parts (FA-03): keeps foreign namespaces and root attributes. */
-        val hfEnvelopes: Map<String, String> = emptyMap()
+        val hfEnvelopes: Map<String, String> = emptyMap(),
+        /** `path → complete XML` for footnote/endnote parts the session changed. */
+        val notes: Map<String, String> = emptyMap()
     )
 
     fun documentXml(pkg: DocxPackage, state: DocState): String {
@@ -119,6 +123,25 @@ object DocxWriter {
                     rels = addRelWithId(rels, type, target, it)
                 } ?: run { rels = addRel(rels, type, target) }
                 types = addOverride(types, "/" + path, kind)
+            }
+        }
+        for ((path, xml) in extras.notes) {
+            val bytes = xml.toByteArray(Charsets.UTF_8)
+            val end = path.substringAfterLast('/').startsWith("endnotes")
+            val type = if (end) ENDNOTES_TYPE else FOOTNOTES_TYPE
+            val kind = if (end) DocxNotes.Kind.ENDNOTE else DocxNotes.Kind.FOOTNOTE
+            // Written as a replacement *and* an addition: a part created by an earlier save in
+            // this session is already in the source zip even though the loaded package predates
+            // it, and a second save must refresh it instead of keeping the first save's XML.
+            replace[path] = bytes
+            if (pkg.notes.pathOf(kind) != path || pkg.notes.xmlOf(kind) == null) {
+                add[path] = bytes
+                rels = addRel(rels, type, relTarget(dir, path))
+                types = addOverride(
+                    types, "/" + path,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml." +
+                        (if (end) "endnotes" else "footnotes") + "+xml"
+                )
             }
         }
         extras.settings?.let { settingsXml ->

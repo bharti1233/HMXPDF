@@ -1050,4 +1050,14 @@
     <string name="docx_table_height_label">ارتفاع الصف</string>
     <string name="docx_table_alignment">محاذاة الجدول</string>
     <string name="docx_table_complex">التعديلات البنيوية غير متاحة لشبكة هذا الجدول.</string>
+    <string name="docx_notes">الحواشي السفلية والنهائية</string>
+    <string name="docx_note_footnote">حاشية سفلية</string>
+    <string name="docx_note_endnote">حاشية نهائية</string>
+    <string name="docx_note_insert_footnote">إدراج حاشية سفلية</string>
+    <string name="docx_note_insert_endnote">إدراج حاشية نهائية</string>
+    <string name="docx_note_hint">تُضاف الحاشية إلى الفقرة المحددة. اكتب أدناه.</string>
+    <string name="docx_note_view">بدّل إلى وضع التحرير لتغيير الحواشي.</string>
+    <string name="docx_note_locked">تتبع التغييرات مفعّل. أوقفه لتغيير الحواشي.</string>
+    <string name="docx_note_empty">لا توجد حواشٍ بعد.</string>
+    <string name="docx_note_remove">إزالة</string>
 </resources>

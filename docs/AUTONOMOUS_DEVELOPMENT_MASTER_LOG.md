@@ -1,5 +1,23 @@
 # HMXPDF autonomous development master log
 
+## Phase 4.4 implementation — 2026-11-17 (CI pending)
+
+Footnotes and endnotes: `DocxNotes` parses `word/footnotes.xml` / `word/endnotes.xml` into
+immutable note snapshots (kind, id, separator flag, paragraph blocks, original element span) and
+builds the part back by splicing only added/edited/removed notes; reserved separators (-1/0) are
+never allocated or touched, ids are independent per part. `DocxReader` resolves both parts through
+relationships (fallback to word/*notes.xml), `DocxPackage` carries the parsed state, and
+`DocxWriter.Extras.notes` writes an existing part in place or creates the part plus its
+relationship and content-type override. The view model inserts a note reference and its note
+element in one undo step, deletes both atomically (refusing when a reference cannot be removed
+from read-only/raw content), edits note paragraphs through the body's paragraph kernel, refuses
+note operations while Track Changes is on, and includes the notes snapshot in dirty, checkpoints,
+save capture and recovery. The Notes panel (7 locales) lists notes, inserts footnotes/endnotes at
+the focused paragraph, edits their paragraph text and removes them. JVM tests cover separator
+preservation, id allocation, comment/note isolation, writer round trips (existing and created
+parts, relationship and content-type entries), VM gating, undo/redo and the save capture. No local
+Android build; CI verification is pending. Per instruction, `main` is not pushed.
+
 ## Phase 4.2 complete — 2026-11-17 (CI run 44050687595)
 
 Advanced tables: immutable `DocxTables` kernels (grid validation, table creation, row/column

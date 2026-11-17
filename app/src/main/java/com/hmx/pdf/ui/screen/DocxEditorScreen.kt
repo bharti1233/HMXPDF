@@ -79,6 +79,7 @@ import androidx.compose.material.icons.rounded.ChangeHistory
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Notes
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Edit
@@ -183,6 +184,7 @@ import com.hmx.pdf.docx.DocRow
 import com.hmx.pdf.docx.DocState
 import com.hmx.pdf.docx.DocTable
 import com.hmx.pdf.docx.DocxTables
+import com.hmx.pdf.docx.DocxNotes
 import com.hmx.pdf.docx.DocxEdits
 import com.hmx.pdf.docx.DocxObjects
 import com.hmx.pdf.docx.DocxPackage
@@ -246,7 +248,7 @@ private val PaperCorner = 6.dp
 private val DeskGutter = 8.dp
 private val PageGap = 14.dp
 
-private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE }
+private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE, NOTES }
 
 /** Formatting chosen with nothing selected: it applies to what is typed next at [at]. */
 private class Pending(val paraId: Long, val at: Int, val fmt: CharFmt)
@@ -1131,6 +1133,7 @@ private fun DocxEditorContent(
                     GlassToolButton(Icons.Rounded.ChangeHistory, stringResource(R.string.docx_revisions), panel == DocPanel.REVISIONS, { panel = if (panel == DocPanel.REVISIONS) DocPanel.NONE else DocPanel.REVISIONS }, enabled = has, accent = accent)
                     GlassToolButton(Icons.Rounded.Settings, stringResource(R.string.docx_page_setup), panel == DocPanel.LAYOUT, { panel = if (panel == DocPanel.LAYOUT) DocPanel.NONE else DocPanel.LAYOUT }, enabled = pkg != null, accent = accent)
                     GlassToolButton(Icons.Rounded.TableChart, stringResource(R.string.docx_table), panel == DocPanel.TABLE, { panel = if (panel == DocPanel.TABLE) DocPanel.NONE else DocPanel.TABLE }, enabled = pkg != null, accent = accent)
+                    GlassToolButton(Icons.Rounded.Notes, stringResource(R.string.docx_notes), panel == DocPanel.NOTES, { panel = if (panel == DocPanel.NOTES) DocPanel.NONE else DocPanel.NOTES }, enabled = pkg != null, accent = accent)
                     GlassToolButton(
                         when (align) {
                             "center" -> Icons.Rounded.FormatAlignCenter
@@ -1961,6 +1964,102 @@ private fun DocxEditorContent(
                             }
                             TableAction(stringResource(R.string.sheet_align_right), live) {
                                 viewModel.setTableAlignment(table.id, "right")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Footnotes and endnotes (Phase 4.4): each note's body text is edited with the same
+        // paragraph kernel as the body, and insert/delete changes the reference and the note part
+        // in one undo step. Track Changes refuses note edits (two parts, one atomic change).
+        if (panel == DocPanel.NOTES) {
+            val live = viewModel.editMode && viewModel.editable && !viewModel.tracking
+            val footnotes = viewModel.notesList(DocxNotes.Kind.FOOTNOTE)
+            val endnotes = viewModel.notesList(DocxNotes.Kind.ENDNOTE)
+            GlassDialog(
+                visible = true,
+                onDismiss = { panel = DocPanel.NONE },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_notes)
+            ) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (!live) BasicText(
+                        stringResource(
+                            if (viewModel.editMode) R.string.docx_note_locked
+                            else R.string.docx_note_view
+                        ),
+                        style = TextStyle(sub, 12.sp, FontWeight.Medium)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TableAction(stringResource(R.string.docx_note_insert_footnote), live) {
+                            viewModel.insertNote(DocxNotes.Kind.FOOTNOTE, focusedField, "")
+                        }
+                        TableAction(stringResource(R.string.docx_note_insert_endnote), live) {
+                            viewModel.insertNote(DocxNotes.Kind.ENDNOTE, focusedField, "")
+                        }
+                    }
+                    if (footnotes.isEmpty() && endnotes.isEmpty()) {
+                        BasicText(stringResource(R.string.docx_note_empty), style = TextStyle(sub, 13.sp))
+                    } else {
+                        BasicText(stringResource(R.string.docx_note_hint), style = TextStyle(sub, 11.sp))
+                    }
+                    for ((kind, list) in listOf(
+                        DocxNotes.Kind.FOOTNOTE to footnotes,
+                        DocxNotes.Kind.ENDNOTE to endnotes
+                    )) {
+                        if (list.isEmpty()) continue
+                        BasicText(
+                            stringResource(
+                                if (kind == DocxNotes.Kind.FOOTNOTE) R.string.docx_note_footnote
+                                else R.string.docx_note_endnote
+                            ),
+                            style = TextStyle(text, 14.sp, FontWeight.Medium)
+                        )
+                        for ((index, note) in list.withIndex()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                BasicText(
+                                    "${index + 1}. " + viewModel.noteFirstText(note),
+                                    style = TextStyle(sub, 12.sp),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TableAction(stringResource(R.string.docx_note_remove), live) {
+                                    viewModel.deleteNote(kind, note.id)
+                                }
+                            }
+                            for (p in viewModel.noteParas(kind, note.id)) {
+                                if (!p.editable) continue
+                                var txt by remember(kind, note.id, p.id) {
+                                    mutableStateOf(p.text.filter { it != OBJ_CHAR })
+                                }
+                                if (live) {
+                                    BasicTextField(
+                                        value = txt,
+                                        onValueChange = {
+                                            txt = it
+                                            viewModel.noteTyped(kind, note.id, p.id, it)
+                                        },
+                                        textStyle = TextStyle(text, 14.sp, FontWeight.Medium),
+                                        cursorBrush = SolidColor(accent),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(text.copy(0.07f))
+                                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                                    )
+                                } else {
+                                    BasicText(
+                                        txt.ifEmpty { "—" },
+                                        style = TextStyle(text, 14.sp, FontWeight.Medium)
+                                    )
+                                }
                             }
                         }
                     }

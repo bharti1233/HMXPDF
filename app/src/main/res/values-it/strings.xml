@@ -1080,4 +1080,14 @@
     <string name="docx_table_height_label">Altezza riga</string>
     <string name="docx_table_alignment">Allineamento tabella</string>
     <string name="docx_table_complex">Le modifiche strutturali non sono disponibili per la griglia di questa tabella.</string>
+    <string name="docx_notes">Note a piè di pagina e finali</string>
+    <string name="docx_note_footnote">Nota a piè di pagina</string>
+    <string name="docx_note_endnote">Nota finale</string>
+    <string name="docx_note_insert_footnote">Inserisci nota a piè di pagina</string>
+    <string name="docx_note_insert_endnote">Inserisci nota finale</string>
+    <string name="docx_note_hint">La nota viene aggiunta al paragrafo attivo. Scrivi qui sotto.</string>
+    <string name="docx_note_view">Passa alla Modalità modifica per modificare le note.</string>
+    <string name="docx_note_locked">Il rilevamento modifiche è attivo. Disattivalo per modificare le note.</string>
+    <string name="docx_note_empty">Nessuna nota per ora.</string>
+    <string name="docx_note_remove">Rimuovi</string>
 </resources>

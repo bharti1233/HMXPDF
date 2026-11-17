@@ -24,6 +24,8 @@ import com.hmx.pdf.docx.PageSetup
 import com.hmx.pdf.docx.DocPara
 import com.hmx.pdf.docx.DocState
 import com.hmx.pdf.docx.DocTable
+import com.hmx.pdf.docx.DocxNote
+import com.hmx.pdf.docx.DocxNotes
 import com.hmx.pdf.docx.DocxTables
 import com.hmx.pdf.docx.DocxComments
 import com.hmx.pdf.docx.DocxEdits
@@ -79,6 +81,10 @@ class DocxEditorViewModel : ViewModel() {
         private set
     var doc by mutableStateOf<DocState?>(null)
         private set
+    /** Footnote/endnote session state. Copy-on-write, so an undo snapshot holds it exactly. */
+    var notes by mutableStateOf<DocxNotes?>(null)
+        private set
+    private var packageSavedNotes: DocxNotes? = null
     private var saved: DocState? = null
     /** The document as opened: the local mirror already holds exactly this. */
     private var original: DocState? = null
@@ -104,7 +110,8 @@ class DocxEditorViewModel : ViewModel() {
      */
     val dirty: Boolean get() = doc != null && doc !== saved ||
         effectiveSettings() != packageSavedSettings ||
-        hfChanged.any { (path, st) -> st !== packageSavedHf[path] }
+        hfChanged.any { (path, st) -> st !== packageSavedHf[path] } ||
+        notes !== packageSavedNotes
     // The test-mirror half sits alone: unparenthesized, the elvis binds to the getter's left side
     // (`(mirror ?: uri) == "file"`) and any forced Boolean would compare against "file" as false.
     val editable: Boolean get() = pkg?.writable == true && (testFileMirror ?: (meta.fileUri?.scheme == "file"))
@@ -235,13 +242,15 @@ class DocxEditorViewModel : ViewModel() {
         val relIds: Map<String, String>,
         val envelopes: Map<String, String>,
         val settings: String?,
-        val settingsChanged: Boolean
+        val settingsChanged: Boolean,
+        val notes: DocxNotes?
     )
 
     private fun snap(): SessionSnap = SessionSnap(
         body = doc ?: DocState(emptyList()),
         hf = hfChanged.toMap(), relIds = hfRelIds.toMap(), envelopes = hfEnvelopes.toMap(),
-        settings = wantSettings, settingsChanged = settingsChanged
+        settings = wantSettings, settingsChanged = settingsChanged,
+        notes = notes
     )
 
     private fun restore(s: SessionSnap) {
@@ -250,15 +259,11 @@ class DocxEditorViewModel : ViewModel() {
         hfRelIds.clear(); hfRelIds.putAll(s.relIds)
         hfEnvelopes.clear(); hfEnvelopes.putAll(s.envelopes)
         wantSettings = s.settings; settingsChanged = s.settingsChanged
+        notes = s.notes
     }
 
-    /**
-     * Replaces the document. Typing into one paragraph coalesces into one undo step (per [key],
-     * until a pause); everything else is its own step.
-     */
-    private fun commit(next: DocState, key: String? = null) {
-        val cur = doc ?: return
-        if (next === cur) return
+    /** Pushes the pre-change snapshot and starts a new step (typing coalesces per [key]). */
+    private fun step(key: String?) {
         val now = System.currentTimeMillis()
         val coalesce = key != null && key == lastKey && now - lastAt < 1500
         if (!coalesce) {
@@ -268,9 +273,39 @@ class DocxEditorViewModel : ViewModel() {
         lastKey = key
         lastAt = now
         redoStack.clear()
-        doc = next
         canUndo = undoStack.isNotEmpty()
         canRedo = false
+    }
+
+    /**
+     * Replaces the document. Typing into one paragraph coalesces into one undo step (per [key],
+     * until a pause); everything else is its own step.
+     */
+    private fun commit(next: DocState, key: String? = null) {
+        val cur = doc ?: return
+        if (next === cur) return
+        step(key)
+        doc = next
+        scheduleCheckpoint()
+    }
+
+    /** One step that changes a note part only (typing in a note body). */
+    private fun commitNotes(next: DocxNotes, key: String? = null) {
+        if (next === notes) return
+        step(key)
+        notes = next
+        scheduleCheckpoint()
+    }
+
+    /**
+     * One atomic step for a note reference and its part element: both are captured in the same
+     * snapshot, so undo/redo can never expose a reference without its note (or the reverse).
+     */
+    private fun commitNotePair(nextDoc: DocState, nextNotes: DocxNotes) {
+        if (nextDoc === doc && nextNotes === notes) return
+        step(null)
+        doc = nextDoc
+        notes = nextNotes
         scheduleCheckpoint()
     }
 
@@ -385,7 +420,7 @@ class DocxEditorViewModel : ViewModel() {
     private fun unchangedSinceCheckpoint(fp: SessionSnap): Boolean {
         val last = lastCheckpointFp ?: return false
         return fp.body === last.body && fp.settings === last.settings &&
-            fp.settingsChanged == last.settingsChanged &&
+            fp.settingsChanged == last.settingsChanged && fp.notes === last.notes &&
             fp.hf.size == last.hf.size && fp.relIds.size == last.relIds.size &&
             fp.hf.all { (k, v) -> last.hf[k] === v } &&
             fp.relIds.all { (k, v) -> last.relIds[k] === v }
@@ -638,6 +673,90 @@ class DocxEditorViewModel : ViewModel() {
         val all = ArrayList<Long>()
         doc?.blocks?.let { blocks -> forEachPara(blocks) { p -> all.add(p.id) } }
         mapParas(all) { DocxComments.stripPara(it, id) }
+    }
+
+    // ── footnotes / endnotes (Phase 4.4) ───────────────────────────────────────
+
+    /**
+     * Note edits land in a second package part and in the body in the same step, so Track Changes
+     * (which can only wrap body runs) refuses them rather than writing half a change.
+     */
+    private fun canEditNotes(): Boolean = editMode && editable && !tracking
+    /** Content notes in document order (separators and removed entries excluded). */
+    fun notesList(kind: DocxNotes.Kind? = null): List<DocxNote> {
+        val n = notes ?: return emptyList()
+        return if (kind == null) n.visible(DocxNotes.Kind.FOOTNOTE) + n.visible(DocxNotes.Kind.ENDNOTE)
+        else n.visible(kind)
+    }
+
+    /** The note's first paragraph without its number mark, for the list row. */
+    fun noteFirstText(note: DocxNote): String =
+        note.blocks.filterIsInstance<DocPara>().firstOrNull()?.text?.filter { it != OBJ_CHAR } ?: ""
+
+    /** The paragraphs of one note, for the same text-field editor the header/footer parts use. */
+    fun noteParas(kind: DocxNotes.Kind, id: Int): List<DocPara> {
+        val note = notes?.notes(kind)?.firstOrNull { it.id == id && !it.removed } ?: return emptyList()
+        val out = ArrayList<DocPara>()
+        forEachPara(note.blocks) { out.add(it) }
+        return out
+    }
+
+    /**
+     * Adds a note and its body reference in one undo step. The reference is appended to the focused
+     * paragraph (the VM has no caret range, the comments precedent); with no focus the first
+     * editable paragraph takes it. Returns the new note id, or null when refused.
+     */
+    fun insertNote(kind: DocxNotes.Kind, paraId: Long? = null, text: String = ""): Int? {
+        if (!canEditNotes()) return null
+        val cur = notes ?: return null
+        val d = doc ?: return null
+        val target = paraId?.let { findPara(d.blocks, it) }?.takeIf { it.editable }
+            ?: firstEditable(d.blocks) ?: return null
+        val (nextNotes, id) = DocxNotes.add(cur, kind, text)
+        val blocks = replacePara(d.blocks, DocxNotes.anchorPara(target, kind, id)) ?: return null
+        commitNotePair(DocState(blocks), nextNotes)
+        return id
+    }
+
+    /**
+     * Deletes a note and every editable reference to it in one step. A reference the editor can't
+     * remove (raw/read-only content) makes the whole deletion refuse: an orphan reference is worse
+     * than a polite no-op.
+     */
+    fun deleteNote(kind: DocxNotes.Kind, id: Int): Boolean {
+        if (!canEditNotes()) return false
+        val cur = notes ?: return false
+        val d = doc ?: return false
+        val nextNotes = DocxNotes.remove(cur, kind, id) ?: return false
+        val stripped = DocxNotes.stripReferences(d.blocks, kind, id) ?: d.blocks
+        if (DocxNotes.hasReference(stripped, kind, id)) return false
+        commitNotePair(if (stripped === d.blocks) d else DocState(stripped), nextNotes)
+        return true
+    }
+
+    /** Types into one note paragraph, through the same paragraph kernel as the body. */
+    fun noteTyped(kind: DocxNotes.Kind, id: Int, paraId: Long, newText: String) {
+        if (!canEditNotes()) return
+        val cur = notes ?: return
+        val note = cur.notes(kind).firstOrNull { it.id == id && !it.removed } ?: return
+        val p = findPara(note.blocks, paraId) ?: return
+        if (!p.editable || p.text == newText) return
+        // The note's number mark is an object run in the paragraph text: typing must keep it.
+        val marks = p.fmts.filter { it.obj != null }
+        val np = if (marks.isEmpty()) {
+            DocxEdits.typed(p, newText, DocxEdits.fmtAt(p, p.text.length))
+        } else {
+            val base = DocxEdits.typed(
+                p.edited(text = "", fmts = emptyList()), newText, DocxEdits.fmtAt(p, p.text.length)
+            )
+            base.edited(
+                text = OBJ_CHAR.toString().repeat(marks.size) + base.text,
+                fmts = marks + base.fmts
+            )
+        }
+        val blocks = replacePara(note.blocks, np) ?: return
+        val next = DocxNotes.edit(cur, kind, id, blocks) ?: return
+        commitNotes(next, "note${kind.name}$id$paraId")
     }
 
     // ── tracked-change resolution ──────────────────────────────────────────────
@@ -1018,15 +1137,27 @@ class DocxEditorViewModel : ViewModel() {
         // (a toggle on then off) compare equal here and stop counting as dirty.
         packageSavedSettings = pkg?.settings
         packageSavedHf.clear()
+        notes = pkg?.notes
+        packageSavedNotes = pkg?.notes
     }
 
-    /** The package half of save: header/footer parts and settings ride along with the body patch. */
-    private fun extras() = DocxWriter.Extras(
-        hfSave = hfChanged.toMap(),
-        hfRelIds = hfRelIds.toMap(),
-        settings = if (settingsChanged) wantSettings else null,
-        hfEnvelopes = hfEnvelopes.toMap()
-    )
+    /** The package half of save: header/footer parts, notes and settings ride with the body patch. */
+    private fun extras(): DocxWriter.Extras {
+        val n = notes?.takeIf { it !== packageSavedNotes }
+        val noteParts = LinkedHashMap<String, String>()
+        if (n != null) for (kind in DocxNotes.Kind.values()) {
+            val xml = n.document(kind) ?: continue
+            val path = n.pathOf(kind) ?: DocxNotes.defaultPath(kind, pkg?.mainPath?.substringBeforeLast('/', "") ?: "")
+            noteParts[path] = xml
+        }
+        return DocxWriter.Extras(
+            hfSave = hfChanged.toMap(),
+            hfRelIds = hfRelIds.toMap(),
+            settings = if (settingsChanged) wantSettings else null,
+            hfEnvelopes = hfEnvelopes.toMap(),
+            notes = noteParts
+        )
+    }
 
     /**
      * Everything one save serializes, captured once on the owner thread (FA-04): the package, the
@@ -1040,7 +1171,9 @@ class DocxEditorViewModel : ViewModel() {
         val extras: DocxWriter.Extras,
         val source: File? = null,
         val fileName: String = "document.docx",
-        val identity: String? = null
+        val identity: String? = null,
+        /** The notes snapshot this capture wrote (null when no note changed). */
+        val notes: DocxNotes? = null
     )
 
     internal fun saveCapture(): SaveCapture? {
@@ -1048,7 +1181,8 @@ class DocxEditorViewModel : ViewModel() {
         val d = doc ?: return null
         return SaveCapture(p, d, extras(),
             meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File), meta.fileName,
-            meta.sourceUri?.toString())
+            meta.sourceUri?.toString(),
+            notes?.takeIf { it !== packageSavedNotes })
     }
 
     /** The save succeeded: body and package snapshots become the dirty baseline (also a test seam). */
@@ -1060,6 +1194,7 @@ class DocxEditorViewModel : ViewModel() {
         packageSavedSettings = capture.extras.settings ?: capture.pkg.settings
         packageSavedHf.clear()
         packageSavedHf.putAll(capture.extras.hfSave)
+        capture.notes?.let { packageSavedNotes = it }
         lastCheckpointFp = null
         autosave.onSaved()
         autosaveJob?.cancel(); autosaveJob = null
@@ -1070,7 +1205,7 @@ class DocxEditorViewModel : ViewModel() {
     /** Legacy test seam: record the current session state as saved. */
     internal fun recordSaved(snapshot: DocState) {
         val p = pkg ?: return
-        recordSaved(SaveCapture(p, snapshot, extras()))
+        recordSaved(SaveCapture(p, snapshot, extras(), notes = notes?.takeIf { it !== packageSavedNotes }))
     }
 
     /** Test seam: the same payload [save] hands the writer, so JVM tests cover what a save writes. */

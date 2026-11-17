@@ -1075,4 +1075,14 @@
     <string name="docx_table_height_label">Alto de fila</string>
     <string name="docx_table_alignment">Alineación de tabla</string>
     <string name="docx_table_complex">Las ediciones estructurales no están disponibles para la cuadrícula de esta tabla.</string>
+    <string name="docx_notes">Notas al pie y finales</string>
+    <string name="docx_note_footnote">Nota al pie</string>
+    <string name="docx_note_endnote">Nota final</string>
+    <string name="docx_note_insert_footnote">Insertar nota al pie</string>
+    <string name="docx_note_insert_endnote">Insertar nota final</string>
+    <string name="docx_note_hint">La nota se añade al párrafo enfocado. Escribe abajo.</string>
+    <string name="docx_note_view">Cambia a Modo de edición para cambiar las notas.</string>
+    <string name="docx_note_locked">El control de cambios está activado. Desactívalo para cambiar las notas.</string>
+    <string name="docx_note_empty">Aún no hay notas.</string>
+    <string name="docx_note_remove">Quitar</string>
 </resources>

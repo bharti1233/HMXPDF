@@ -1078,4 +1078,14 @@
     <string name="docx_table_height_label">Row height</string>
     <string name="docx_table_alignment">Table alignment</string>
     <string name="docx_table_complex">Structural edits are unavailable for this table\'s grid.</string>
+    <string name="docx_notes">Footnotes and endnotes</string>
+    <string name="docx_note_footnote">Footnote</string>
+    <string name="docx_note_endnote">Endnote</string>
+    <string name="docx_note_insert_footnote">Insert footnote</string>
+    <string name="docx_note_insert_endnote">Insert endnote</string>
+    <string name="docx_note_hint">A note is appended to the focused paragraph. Type below to write it.</string>
+    <string name="docx_note_view">Switch to Edit Mode to change notes.</string>
+    <string name="docx_note_locked">Track Changes is on. Turn it off to change notes.</string>
+    <string name="docx_note_empty">No footnotes or endnotes yet.</string>
+    <string name="docx_note_remove">Remove</string>
 </resources>
