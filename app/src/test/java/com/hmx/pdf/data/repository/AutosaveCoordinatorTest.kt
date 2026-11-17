@@ -18,6 +18,16 @@ class AutosaveCoordinatorTest {
     private val MAX = AutosaveCoordinator.DEFAULT_MAX_DIRTY_MS
 
     @Test
+    fun failedWriteRetriesWithoutAnotherKeystroke() {
+        val c = AutosaveCoordinator()
+        c.touch(0, dirty = true)
+        assertTrue(c.beginWrite())
+        assertEquals(MAX, c.endWrite(2_000, succeeded = false))
+        assertTrue(c.beginWrite())
+        assertEquals(AutosaveCoordinator.NONE, c.endWrite(17_000, succeeded = true))
+    }
+
+    @Test
     fun theFirstEditSchedulesTheIdleDebounce() {
         val c = AutosaveCoordinator()
         assertEquals(IDLE, c.touch(1_000, dirty = true))

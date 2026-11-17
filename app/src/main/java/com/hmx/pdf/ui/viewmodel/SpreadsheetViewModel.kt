@@ -261,10 +261,10 @@ class SpreadsheetViewModel : ViewModel() {
                 }.getOrDefault(false)
             }
             if (ok) lastCheckpointedOps = ops
-            val followUp = autosave.endWrite(System.currentTimeMillis())
+            val followUp = autosave.endWrite(System.currentTimeMillis(), succeeded = ok)
             if (followUp != AutosaveCoordinator.NONE) {
                 autosaveJob?.cancel()
-                autosaveJob = launch { delay(followUp); writeCheckpoint(context) }
+                autosaveJob = viewModelScope.launch { delay(followUp); writeCheckpoint(context) }
             }
         }
     }

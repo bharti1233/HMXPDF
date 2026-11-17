@@ -1,5 +1,13 @@
 # Phase 4 final report (autonomous master-flow convention)
 
+> **2026-11-17 correction: Phase 4.1 reopened.** Its successful builds are valid build
+> evidence, but the completion verdict below is superseded. A source audit found a
+> checkpoint publication crash window and recovered packages using the wrong source mirror
+> on later saves. Repair `aab606f` is published; CI run 43992838288 is pending. Further
+> save/checkpoint concurrency, retry, storage-bound and inaccessible-source recovery checks
+> remain required before proceeding to Phase 4.2. The original tests did not establish
+> interruption safety at every boundary or device process-death behavior.
+
 Scope basis: `docs/fresh-audit/HMXPDF_MASTER_IMPLEMENTATION_ROADMAP.md` (Phase 4.0–4.6) and
 `docs/fresh-audit/HMXPDF_FEATURE_GAP_ANALYSIS.md` — the five Phase 4 planning documents named in
 the original work order do not exist in the repository (`docs/phase4/` absent); no scope was

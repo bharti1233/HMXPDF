@@ -53,10 +53,15 @@ internal class AutosaveCoordinator(
      * follow-up, capped from now — the newest state gets its own bounded window), -1 otherwise
      * (the next edit schedules the next checkpoint).
      */
-    fun endWrite(nowMs: Long): Long {
+    fun endWrite(nowMs: Long, succeeded: Boolean = true): Long {
         writeInFlight = false
         val hadNewer = editsDuringWrite
         editsDuringWrite = false
+        if (!succeeded) {
+            firstDirtyAt = nowMs
+            lastEditAt = nowMs
+            return maxDirtyMs
+        }
         return if (hadNewer) {
             firstDirtyAt = nowMs
             lastEditAt = nowMs
