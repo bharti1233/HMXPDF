@@ -1085,4 +1085,14 @@
     <string name="docx_note_locked">El control de cambios está activado. Desactívalo para cambiar las notas.</string>
     <string name="docx_note_empty">Aún no hay notas.</string>
     <string name="docx_note_remove">Quitar</string>
+    <string name="docx_spell">Revisión ortográfica</string>
+    <string name="docx_spell_check">Revisar ortografía</string>
+    <string name="docx_spell_running">Revisando ortografía…</string>
+    <string name="docx_spell_unavailable">No hay ningún servicio de ortografía sin conexión disponible en este dispositivo.</string>
+    <string name="docx_spell_no_issues">No se han encontrado faltas de ortografía.</string>
+    <string name="docx_spell_found">Sugerencias: %1$d</string>
+    <string name="docx_spell_ignore">Ignorar</string>
+    <string name="docx_spell_view">Cambia a Modo de edición para aplicar una sugerencia.</string>
+    <string name="docx_spell_language">Idioma: %1$s</string>
+    <string name="docx_spell_hint">Toca una sugerencia para sustituir la palabra. Nada cambia hasta que lo hagas.</string>
 </resources>

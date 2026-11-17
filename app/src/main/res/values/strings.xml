@@ -1088,4 +1088,14 @@
     <string name="docx_note_locked">Track Changes is on. Turn it off to change notes.</string>
     <string name="docx_note_empty">No footnotes or endnotes yet.</string>
     <string name="docx_note_remove">Remove</string>
+    <string name="docx_spell">Spell check</string>
+    <string name="docx_spell_check">Check spelling</string>
+    <string name="docx_spell_running">Checking spelling…</string>
+    <string name="docx_spell_unavailable">No offline spell service is available on this device.</string>
+    <string name="docx_spell_no_issues">No misspellings found.</string>
+    <string name="docx_spell_found">%1$d suggestions</string>
+    <string name="docx_spell_ignore">Ignore</string>
+    <string name="docx_spell_view">Switch to Edit Mode to apply a suggestion.</string>
+    <string name="docx_spell_language">Language: %1$s</string>
+    <string name="docx_spell_hint">Tap a suggestion to replace the word. Nothing changes until you do.</string>
 </resources>

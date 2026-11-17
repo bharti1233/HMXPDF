@@ -1,5 +1,26 @@
 # HMXPDF autonomous development master log
 
+## Phase 4.3 implementation — 2026-11-17 (CI pending)
+
+Spell checking runs entirely offline through `AndroidSpellEngine`, a `SpellCheckerSession` adapter
+over the installed Android text service; it never opens a network connection. The adapter refuses
+a service whose package requests `INTERNET` (API 31+ reads the active service's package, older
+releases read the secure `spell_checker` component) and the panel reports an unavailable state
+otherwise. `SpellCheck` tokenizes each editable paragraph's flat text, which makes words split
+across runs checkable; it skips object runs, digits/digit-adjacent fragments, URLs, e-mail
+addresses and paths, and asks the service in bounded 64-word chunks with cooperative cancellation.
+A bounded LRU (`SpellCache`) keeps results for the session. Suggestions are annotations held in the
+ViewModel beside the document — never in `DocState`, rPr or the dirty baseline — and are drawn as
+display-only ranges behind the text. The view model publishes issues with the exact paragraph
+instance they were found in; a replacement is only applied from an explicit tap, refuses when the
+paragraph instance or text changed (stale suggestion), and otherwise goes through `DocxEdits`
+with the same Track Changes capture as every other edit (single undo step). The new Spell panel
+(7 locales) lists words and suggestions, exposes running/unavailable/no-issues states and a
+re-check action. JVM tests cover token rules, cross-run words, bounded cache, chunking, cooperative
+cancellation, editable-only scanning, stale refusal, formatting/comment preservation, tracked
+replacement, view-mode gating and ignore. No local Android build; CI verification is pending. Per
+instruction, `main` is not pushed.
+
 ## Phase 4.4 implementation — 2026-11-17 (CI pending)
 
 Footnotes and endnotes: `DocxNotes` parses `word/footnotes.xml` / `word/endnotes.xml` into

@@ -38,6 +38,12 @@ import com.hmx.pdf.docx.findPara
 import com.hmx.pdf.docx.forEachPara
 import com.hmx.pdf.docx.mapContainerOf
 import com.hmx.pdf.docx.replacePara
+import com.hmx.pdf.spell.AndroidSpellEngine
+import com.hmx.pdf.spell.SpellCache
+import com.hmx.pdf.spell.SpellCheck
+import com.hmx.pdf.spell.SpellEngine
+import com.hmx.pdf.spell.SpellIssue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -85,6 +91,38 @@ class DocxEditorViewModel : ViewModel() {
     var notes by mutableStateOf<DocxNotes?>(null)
         private set
     private var packageSavedNotes: DocxNotes? = null
+
+    // ── spell checking (Phase 4.3) ─────────────────────────────────────────────
+
+    /**
+     * Spell suggestions are annotations, not document state: they live beside [doc], never in it,
+     * so checking cannot change a run's rPr or make the document dirty. Application happens only
+     * through [applySpellFix] when the user taps a suggestion.
+     */
+    enum class SpellStatus { IDLE, RUNNING, READY, UNAVAILABLE }
+
+    var spellStatus by mutableStateOf(SpellStatus.IDLE)
+        private set
+    var spellIssues by mutableStateOf<List<SpellIssue>>(emptyList())
+        private set
+
+    /** Paragraph id → ranges to mark, ready for the reading/edit projection. */
+    var spellRanges by mutableStateOf<Map<Long, List<IntRange>>>(emptyMap())
+        private set
+    var spellLanguage by mutableStateOf<String?>(null)
+        private set
+
+    /** Why no service is usable (offline policy, disabled, absent); diagnostics for the adapter. */
+    var spellMessage by mutableStateOf<String?>(null)
+        private set
+
+    private val spellCache = SpellCache()
+    private var spellJob: Job? = null
+
+    /** Test seam: a fake engine avoids the Android text-service session in JVM tests. */
+    internal var injectedSpellEngine: SpellEngine? = null
+    private var deviceSpell: SpellEngine? = null
+    private var spellProbed = false
     private var saved: DocState? = null
     /** The document as opened: the local mirror already holds exactly this. */
     private var original: DocState? = null
@@ -759,6 +797,100 @@ class DocxEditorViewModel : ViewModel() {
         commitNotes(next, "note${kind.name}$id$paraId")
     }
 
+    // ── spell checking (Phase 4.3) ─────────────────────────────────────────────
+
+    /**
+     * Scans the current document with the installed on-device service. The run is cancelled by a
+     * newer scan or a reload; results are discarded when the document changed meanwhile, so an
+     * annotation never points at text from an older generation.
+     */
+    fun checkSpelling() {
+        val snapshot = doc ?: return
+        spellJob?.cancel()
+        val engine = spellEngine()
+        if (engine == null || !engine.available) {
+            spellIssues = emptyList()
+            spellRanges = emptyMap()
+            spellLanguage = engine?.language
+            spellMessage = (engine as? AndroidSpellEngine)?.reason
+            spellStatus = SpellStatus.UNAVAILABLE
+            return
+        }
+        spellLanguage = engine.language
+        spellMessage = null
+        spellStatus = SpellStatus.RUNNING
+        spellJob = viewModelScope.launch {
+            val found = try {
+                SpellCheck.collect(snapshot, engine, spellCache)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (doc !== snapshot) return@launch
+            installSpellResults(found)
+        }
+    }
+
+    /** Test seam and the single place issues/ranges are published together. */
+    internal fun installSpellResults(issues: List<SpellIssue>) {
+        spellIssues = issues
+        spellRanges = issues.groupBy { it.paraId }.mapValues { (_, list) -> list.map { it.range } }
+        spellStatus = SpellStatus.READY
+    }
+
+    /**
+     * Applies one user-approved suggestion. The issue must belong to the paragraph instance it was
+     * found in and the live text must still match: after any edit to that paragraph the old
+     * suggestion is stale and refuses instead of replacing the wrong characters. Track Changes uses
+     * the same capture as every other edit.
+     */
+    fun applySpellFix(issue: SpellIssue, replacement: String): Boolean {
+        if (!editMode || !editable) return false
+        val d = doc ?: return false
+        val current = findPara(d.blocks, issue.paraId) ?: return false
+        if (current !== issue.para) return false
+        if (!current.editable) return false
+        if (issue.range.first < 0 || issue.range.last < issue.range.first) return false
+        if (issue.range.last >= current.text.length) return false
+        if (current.text.substring(issue.range) != issue.word) return false
+        if (issue.word == replacement) return false
+        val (revId, meta) = if (tracking) capture(freshKey())!! else null to null
+        var changed = false
+        mapParas(listOf(issue.paraId)) { cur ->
+            val np = DocxEdits.replaceRange(
+                cur, issue.range.first, issue.range.last + 1, replacement, revId, meta, issue.word
+            )
+            if (np !== cur) changed = true
+            np
+        }
+        // Ranges in that paragraph shifted; drop its remaining annotations rather than misplace them.
+        if (changed) dropSpellIssues { it.paraId == issue.paraId }
+        return changed
+    }
+
+    /** Hides one suggestion without editing the document (the user's "ignore"). */
+    fun ignoreSpellIssue(issue: SpellIssue) {
+        dropSpellIssues { it.paraId == issue.paraId && it.range == issue.range && it.word == issue.word }
+    }
+
+    private fun dropSpellIssues(predicate: (SpellIssue) -> Boolean) {
+        val next = spellIssues.filterNot(predicate)
+        spellIssues = next
+        spellRanges = next.groupBy { it.paraId }.mapValues { (_, list) -> list.map { it.range } }
+    }
+
+    /** On device the engine is created once, on the main thread (the service session needs a Looper). */
+    private fun spellEngine(): SpellEngine? {
+        injectedSpellEngine?.let { return it }
+        val context = appContext ?: return null
+        if (!spellProbed) {
+            spellProbed = true
+            deviceSpell = runCatching { AndroidSpellEngine(context) }.getOrNull()
+        }
+        return deviceSpell
+    }
+
     // ── tracked-change resolution ──────────────────────────────────────────────
 
     /** Resolves the one pending revision of [info] — one undo step, other revisions untouched. */
@@ -1139,6 +1271,10 @@ class DocxEditorViewModel : ViewModel() {
         packageSavedHf.clear()
         notes = pkg?.notes
         packageSavedNotes = pkg?.notes
+        // Annotations belong to the previous document/generation; the cache keeps checked words.
+        spellJob?.cancel(); spellJob = null
+        spellIssues = emptyList(); spellRanges = emptyMap()
+        spellStatus = SpellStatus.IDLE; spellLanguage = null; spellMessage = null
     }
 
     /** The package half of save: header/footer parts, notes and settings ride with the body patch. */
@@ -1420,4 +1556,11 @@ class DocxEditorViewModel : ViewModel() {
             val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
             if (i != -1 && c.moveToFirst()) c.getString(i) else null
         }
+
+    override fun onCleared() {
+        spellJob?.cancel()
+        deviceSpell?.close()
+        deviceSpell = null
+        super.onCleared()
+    }
 }

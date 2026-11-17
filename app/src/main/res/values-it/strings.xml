@@ -1090,4 +1090,14 @@
     <string name="docx_note_locked">Il rilevamento modifiche è attivo. Disattivalo per modificare le note.</string>
     <string name="docx_note_empty">Nessuna nota per ora.</string>
     <string name="docx_note_remove">Rimuovi</string>
+    <string name="docx_spell">Controllo ortografico</string>
+    <string name="docx_spell_check">Controlla ortografia</string>
+    <string name="docx_spell_running">Controllo ortografia…</string>
+    <string name="docx_spell_unavailable">Nessun servizio di ortografia offline disponibile su questo dispositivo.</string>
+    <string name="docx_spell_no_issues">Nessun errore di ortografia trovato.</string>
+    <string name="docx_spell_found">Suggerimenti: %1$d</string>
+    <string name="docx_spell_ignore">Ignora</string>
+    <string name="docx_spell_view">Passa alla Modalità modifica per applicare un suggerimento.</string>
+    <string name="docx_spell_language">Lingua: %1$s</string>
+    <string name="docx_spell_hint">Tocca un suggerimento per sostituire la parola. Nulla cambia finché non lo fai.</string>
 </resources>

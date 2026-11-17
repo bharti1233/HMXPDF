@@ -1060,4 +1060,14 @@
     <string name="docx_note_locked">تتبع التغييرات مفعّل. أوقفه لتغيير الحواشي.</string>
     <string name="docx_note_empty">لا توجد حواشٍ بعد.</string>
     <string name="docx_note_remove">إزالة</string>
+    <string name="docx_spell">تدقيق إملائي</string>
+    <string name="docx_spell_check">تدقيق الإملاء</string>
+    <string name="docx_spell_running">جارٍ تدقيق الإملاء…</string>
+    <string name="docx_spell_unavailable">لا تتوفر خدمة تدقيق إملائي دون اتصال على هذا الجهاز.</string>
+    <string name="docx_spell_no_issues">لم يتم العثور على أخطاء إملائية.</string>
+    <string name="docx_spell_found">اقتراحات: %1$d</string>
+    <string name="docx_spell_ignore">تجاهل</string>
+    <string name="docx_spell_view">بدّل إلى وضع التحرير لتطبيق اقتراح.</string>
+    <string name="docx_spell_language">اللغة: %1$s</string>
+    <string name="docx_spell_hint">اضغط على اقتراح لاستبدال الكلمة. لن يتغيّر شيء حتى تفعل ذلك.</string>
 </resources>

@@ -108,6 +108,7 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.SaveAs
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.material.icons.rounded.Superscript
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.CircularProgressIndicator
@@ -248,7 +249,7 @@ private val PaperCorner = 6.dp
 private val DeskGutter = 8.dp
 private val PageGap = 14.dp
 
-private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE, NOTES }
+private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE, NOTES, SPELL }
 
 /** Formatting chosen with nothing selected: it applies to what is typed next at [at]. */
 private class Pending(val paraId: Long, val at: Int, val fmt: CharFmt)
@@ -420,6 +421,8 @@ private class DocEnv(
     val labels: Map<Long, String>,
     val hits: Map<Long, List<IntRange>>,
     val currentHit: Pair<Long, IntRange>?,
+    /** Paragraph id → misspelling ranges (display only, never part of the document). */
+    val spell: Map<Long, List<IntRange>>,
     val accent: Color,
     /** Width between the page margins. */
     val textWidth: Dp,
@@ -1020,6 +1023,7 @@ private fun DocxEditorContent(
                         labels = labels,
                         hits = hitsByPara,
                         currentHit = matches.getOrNull(currentMatch),
+                        spell = viewModel.spellRanges,
                         accent = accent,
                         textWidth = pageW - marginL - marginR,
                         onChange = ::onChange,
@@ -1134,6 +1138,17 @@ private fun DocxEditorContent(
                     GlassToolButton(Icons.Rounded.Settings, stringResource(R.string.docx_page_setup), panel == DocPanel.LAYOUT, { panel = if (panel == DocPanel.LAYOUT) DocPanel.NONE else DocPanel.LAYOUT }, enabled = pkg != null, accent = accent)
                     GlassToolButton(Icons.Rounded.TableChart, stringResource(R.string.docx_table), panel == DocPanel.TABLE, { panel = if (panel == DocPanel.TABLE) DocPanel.NONE else DocPanel.TABLE }, enabled = pkg != null, accent = accent)
                     GlassToolButton(Icons.Rounded.Notes, stringResource(R.string.docx_notes), panel == DocPanel.NOTES, { panel = if (panel == DocPanel.NOTES) DocPanel.NONE else DocPanel.NOTES }, enabled = pkg != null, accent = accent)
+                    GlassToolButton(
+                        Icons.Rounded.Spellcheck,
+                        stringResource(R.string.docx_spell),
+                        panel == DocPanel.SPELL,
+                        {
+                            if (panel == DocPanel.SPELL) panel = DocPanel.NONE
+                            else { panel = DocPanel.SPELL; viewModel.checkSpelling() }
+                        },
+                        enabled = pkg != null,
+                        accent = accent
+                    )
                     GlassToolButton(
                         when (align) {
                             "center" -> Icons.Rounded.FormatAlignCenter
@@ -2067,6 +2082,72 @@ private fun DocxEditorContent(
             }
         }
 
+        // Headless spell annotations (Phase 4.3): the service's suggestions appear as display-only
+        // ranges; a replacement happens only when the user taps one, through the normal edit path.
+        if (panel == DocPanel.SPELL) {
+            val issues = viewModel.spellIssues
+            val canFix = viewModel.editMode && viewModel.editable
+            val status = viewModel.spellStatus
+            GlassDialog(
+                visible = true,
+                onDismiss = { panel = DocPanel.NONE },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_spell)
+            ) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BasicText(
+                        when (status) {
+                            DocxEditorViewModel.SpellStatus.RUNNING -> stringResource(R.string.docx_spell_running)
+                            DocxEditorViewModel.SpellStatus.UNAVAILABLE -> stringResource(R.string.docx_spell_unavailable)
+                            DocxEditorViewModel.SpellStatus.READY ->
+                                if (issues.isEmpty()) stringResource(R.string.docx_spell_no_issues)
+                                else stringResource(R.string.docx_spell_found, issues.size)
+                            DocxEditorViewModel.SpellStatus.IDLE -> stringResource(R.string.docx_spell_hint)
+                        },
+                        style = TextStyle(sub, 12.sp, FontWeight.Medium)
+                    )
+                    viewModel.spellLanguage?.let {
+                        BasicText(
+                            stringResource(R.string.docx_spell_language, it),
+                            style = TextStyle(sub, 11.sp)
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TableAction(
+                            stringResource(R.string.docx_spell_check),
+                            status != DocxEditorViewModel.SpellStatus.RUNNING
+                        ) { viewModel.checkSpelling() }
+                    }
+                    if (!canFix && issues.isNotEmpty()) BasicText(
+                        stringResource(R.string.docx_spell_view),
+                        style = TextStyle(sub, 12.sp, FontWeight.Medium)
+                    )
+                    if (canFix && issues.isNotEmpty()) BasicText(
+                        stringResource(R.string.docx_spell_hint),
+                        style = TextStyle(sub, 11.sp)
+                    )
+                    for (issue in issues) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            BasicText(issue.word, style = TextStyle(text, 15.sp, FontWeight.SemiBold))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                for (suggestion in issue.suggestions.take(4)) {
+                                    TableAction(suggestion, canFix) {
+                                        viewModel.applySpellFix(issue, suggestion)
+                                    }
+                                }
+                                TableAction(stringResource(R.string.docx_spell_ignore), true) {
+                                    viewModel.ignoreSpellIssue(issue)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Header/footer part editing: the referenced part's paragraphs as plain fields; the VM op
         // re-serializes through the same paragraph kernel the body uses, so rPr/objects survive.
         if (panel == DocPanel.HEADERS) {
@@ -2267,8 +2348,9 @@ private fun ParagraphBlock(
     val editable = env.editMode && !readOnly && para.editable && range == null
     val hits = env.hits[para.id].orEmpty()
     val current = env.currentHit?.takeIf { it.first == para.id }?.second
-    val full = remember(para, look, cell, hits, current, editable) {
-        look.annotate(para, pl, cell, hits, current, withLinks = !editable)
+    val spell = env.spell[para.id].orEmpty()
+    val full = remember(para, look, cell, hits, current, spell, editable) {
+        look.annotate(para, pl, cell, hits, current, spell, withLinks = !editable)
     }
     val annotated = remember(full, range) { if (range == null) full else full.subSequence(range.first, (range.last + 1).coerceAtMost(full.length)) }
     val objects = remember(para, range) {

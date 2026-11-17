@@ -177,6 +177,7 @@ internal class DocxLook(
         cell: RProps? = null,
         hits: List<IntRange> = emptyList(),
         current: IntRange? = null,
+        spell: List<IntRange> = emptyList(),
         withLinks: Boolean = false
     ): AnnotatedString {
         val text = p.text
@@ -218,6 +219,13 @@ internal class DocxLook(
             val s = h.first.coerceIn(0, text.length)
             val e = (h.last + 1).coerceIn(0, text.length)
             if (s < e) b.addStyle(SpanStyle(background = if (h == current) curBg else hitBg), s, e)
+        }
+        // Spell annotations are display-only: they never touch rPr or the document state.
+        val spellBg = Color(0xFFFF3B30).copy(alpha = if (dark) 0.42f else 0.22f)
+        for (range in spell) {
+            val s = range.first.coerceIn(0, text.length)
+            val e = (range.last + 1).coerceIn(0, text.length)
+            if (s < e) b.addStyle(SpanStyle(background = spellBg), s, e)
         }
         return b.toAnnotatedString()
     }

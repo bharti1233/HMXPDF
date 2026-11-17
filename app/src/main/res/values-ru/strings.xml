@@ -1090,4 +1090,14 @@
     <string name="docx_note_locked">Режим исправлений включён. Отключите его, чтобы изменить сноски.</string>
     <string name="docx_note_empty">Сносок пока нет.</string>
     <string name="docx_note_remove">Удалить</string>
+    <string name="docx_spell">Проверка орфографии</string>
+    <string name="docx_spell_check">Проверить орфографию</string>
+    <string name="docx_spell_running">Проверка орфографии…</string>
+    <string name="docx_spell_unavailable">На этом устройстве нет доступной автономной службы проверки орфографии.</string>
+    <string name="docx_spell_no_issues">Орфографических ошибок не найдено.</string>
+    <string name="docx_spell_found">Вариантов: %1$d</string>
+    <string name="docx_spell_ignore">Игнорировать</string>
+    <string name="docx_spell_view">Переключитесь в режим редактирования, чтобы применить вариант.</string>
+    <string name="docx_spell_language">Язык: %1$s</string>
+    <string name="docx_spell_hint">Нажмите вариант, чтобы заменить слово. Ничего не изменится, пока вы этого не сделаете.</string>
 </resources>
