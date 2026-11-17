@@ -1077,5 +1077,5 @@
     <string name="docx_table_width_label">Cell width</string>
     <string name="docx_table_height_label">Row height</string>
     <string name="docx_table_alignment">Table alignment</string>
-    <string name="docx_table_complex">Structural edits are unavailable for this table's grid.</string>
+    <string name="docx_table_complex">Structural edits are unavailable for this table\'s grid.</string>
 </resources>
