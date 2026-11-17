@@ -141,7 +141,7 @@ class SpellCheckTest {
             }
         }
         var issues: List<SpellIssue>? = null
-        val job = kotlinx.coroutines.launch {
+        val job = launch {
             issues = SpellCheck.collect(state, engine, SpellCache())
         }
         kotlinx.coroutines.yield()
