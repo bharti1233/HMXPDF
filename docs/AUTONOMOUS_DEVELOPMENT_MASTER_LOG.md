@@ -1,6 +1,6 @@
 # HMXPDF autonomous development master log
 
-## Phase 4.2 implementation — 2026-11-17 (CI pending)
+## Phase 4.2 complete — 2026-11-17 (CI run 44050687595)
 
 Advanced tables: immutable `DocxTables` kernels (grid validation, table creation, row/column
 insert and delete, rectangular merge/split, shading, borders, margins, width, row height and
@@ -9,8 +9,11 @@ commands gated on `editMode && editable && !tracking`, and a table panel localiz
 locales. The kernels refuse `DocRaw` children, gridBefore/gridAfter, hMerge, irregular grids and
 revision-bearing tables; merges preserve covered content on the anchor instead of dropping it.
 JVM tests cover grid invariants, content conservation, writer→reader round trip, revision refusal
-(without false positives from `insideH`/`insideV`) and property ordering. No local Android build;
-CI verification is pending. Per instruction, `main` is intentionally not pushed.
+(without false positives from `insideH`/`insideV`), property ordering and the view-model gates,
+undo/redo and focus targeting. Published head `b9bb233`; run 44050687595 success (324 tests, 0
+failed, 42 pre-existing skips; debug APK 171,061,101 B, release APK 134,738,175 B, AAB 51,242,635
+B). Repair history: `e77d229` → resource-apostrophe failure, `b6eb4b5` → VM merge-assertion
+failure, `b9bb233` green. Per instruction, `main` was not pushed.
 
 ## Phase 4.1 complete — 2026-11-17
 

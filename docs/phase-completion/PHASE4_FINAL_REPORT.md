@@ -20,7 +20,7 @@ invented beyond these two approved documents and the FA defect register
 |---|---|---|
 | 4.0 Foundation | Save coordinator, package-safe splicing, package-inclusive session state, shared fixtures, resolve skipped recovery tests | **IMPLEMENTED AND CI VERIFIED** (below) |
 | 4.1 Autosave & recovery | Autosave, recovery checkpoints, save reliability, disk-full handling, retry, process-death recovery | **COMPLETE** (CI verified below; device scenarios listed as limits) |
-| 4.2 Advanced tables | Structural row/col ops, merge/split, borders, shading, cell margins, row heights | Not started |
+| 4.2 Advanced tables | Structural row/col ops, merge/split, borders, shading, cell margins, row heights | **COMPLETE** (CI verified below; complex-grid limits documented) |
 | 4.4 Footnotes/endnotes | Note part structure and editing | Not started |
 | 4.3 Spell checking | Local engine, suggestions, safe cross-run replacement | Not started |
 | 4.5 Read Aloud | Android TTS, playback controls | Not started |
@@ -200,3 +200,81 @@ protocol below; the earlier `e36abbb` verdict is superseded.
   the writer still reads the session's style table; concurrent style derivation during a save is
   not stress-tested.
 - No WorkManager-based opportunistic cleanup (optional per roadmap).
+
+---
+
+## Phase 4.2 — Advanced tables: COMPLETE (CI verified)
+
+Published head: `b9bb233348b87bdc024b86b80957e91ef90b7b89`.
+Verification run: https://github.com/bharti1233/Hmxpdf/actions/runs/44050687595 — `build`,
+`release` and `release-guard` all completed/success. Artifacts: debug APK 171,061,101 bytes
+(artifact 14314525137), signed release APK 134,738,175 bytes (14313319179), AAB 51,242,635 bytes
+(14313488573). The workflow checked out `b9bb233…`, matching the published development branch head.
+Per instruction, `main` was not pushed; this sub-phase was published only to
+`release/hmxpdf-2.1.1-build`.
+
+### What was implemented
+
+- **`DocxTables`** (`docx`): an immutable table kernel over the existing `DocTable`/`DocRow`/
+  `DocCell` model. It provides logical grid positions (`positions`, `columnCount`, `cellAt`,
+  `locate`), table creation at a body index (never inside a cell, never after the body's `sectPr`,
+  always followed by a paragraph so a body cannot end on a table), row/column insert and delete,
+  rectangular merge/split with validated `gridSpan`/`vMerge`, shading, cell and table borders, cell
+  margins, cell width, row height and table alignment. Merges append covered cells' content to the
+  anchor in row-major order instead of dropping it; splits re-expand the region into single cells.
+- **Property splices** (`DocxProps`): `TBLPR_ORDER`/`TRPR_ORDER`/`TCPR_ORDER` and
+  `setTbl`/`setTr`/`setTc` insert or replace one element at its schema position while preserving
+  unknown sibling elements and attributes. No table element is rebuilt wholesale, so unrelated
+  XML is not rewritten.
+- **View-model commands** (`DocxEditorViewModel`): `insertTable`, row/column insert/delete,
+  `mergeTableCells`, `splitTableCell`, shading, borders, margins, width, row height and alignment.
+  All are gated on `editMode && editable && !tracking`; structural edits are refused while Track
+  Changes is on rather than writing a table with unrepresentable revision semantics. Edits go
+  through the existing `commit` path, so they are a single undo step and flow into the 4.1
+  autosave checkpoints.
+- **UI** (`DocxEditorScreen`): a `TABLE` panel opened from the toolbar, showing the focused cell's
+  row/column position, a create-table stepper (1–20 rows × 1–10 columns), structural buttons,
+  merge/split, shading swatches, border toggles, margin/width presets, row-height and alignment
+  controls. Buttons are disabled when the mode, tracking, grid or table bounds make the operation
+  invalid. 19 new `docx_table_*` strings across all 7 locales.
+- **Grid safety**: kernels refuse tables whose children are not plain rows/cells, irregular row
+  widths, `gridBefore`/`gridAfter`, `hMerge`, and revision-bearing containers
+  (`ins`/`del`/`cellIns`/`cellDel`/`cellMerge`/`*PrChange`). Tag detection matches whole element
+  names, so `insideH`/`insideV` borders are not mistaken for `<w:ins>`.
+
+### Tests
+
+- `DocxTablesTest` (7): creation grid + trailing paragraph, row/column ops preserving rectangularity
+  and content, 2×2 merge content conservation with `vMerge` restart/continue then split
+  restoration, revision refusal without `insideH`/`insideV` false positives, irregular-grid
+  refusal, property-splice ordering with unknown siblings preserved, and a real
+  writer → reader round trip of a merged/shaded table.
+- `DocxTablesViewModelTest` (5): Edit Mode gate, Track Changes refusal and recovery after turning it
+  off, undo/redo through the existing session stacks, merge/split through the VM, and
+  focus-inside-a-cell → table/cell targeting.
+- The full JVM test tasks (`testPlayDebugUnitTest`, `:pdf-core:test`, `:ocr-core:test`) passed in the
+  verification run (324 completed, 0 failed; 42 pre-existing `OfficeEngineDownloadTest` skips
+  remain unchanged). No test was disabled or skipped to obtain this result.
+
+### CI history for this sub-phase
+
+| Run | Commit | Result | Note |
+|---|---|---|---|
+| 44048852341 | `e77d229` | failure | resource compile: unescaped apostrophe in `docx_table_complex` → fixed `b6eb4b5` |
+| 44049471861 | `b6eb4b5` | failure | VM merge test asserted a 3-cell continuation row instead of one spanning cell → fixed `b9bb233` |
+| 44050687595 | `b9bb233` | **success** | final 4.2 verification (build, release, release-guard) |
+
+### Not verified / remaining limits
+
+- Structural row/column and merge/split operations are limited to simple rectangular grids: tables
+  with `gridBefore`/`gridAfter`, `hMerge`, irregular rows, non-row/cell children, nested raw table
+  XML or structural revision markers are refused with no edit (and the panel explains the refusal).
+  Merged tables can be split back, and cell-level formatting works on any resolved grid, but
+  further structural changes inside a merged grid are a second-pass item per the roadmap.
+- Deletion operations remove whole rows/columns only; there is no arbitrary multi-cell selection
+  model yet. The panel acts on the focused cell's table/row/column.
+- Row height exposes automatic and one fixed preset; `w:hRule="exact"` is not surfaced.
+- Width/margin presets are fixed twip values, not a free-form unit editor.
+- No external Microsoft Word/LibreOffice open test and no device/emulator run are performed by CI;
+  schema validity is covered by the reader round trip, the schema-ordered splices and the existing
+  writer invariants. Real Word rendering fidelity of created widths remains unverified.
