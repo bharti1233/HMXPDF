@@ -22,7 +22,9 @@ verified on the published branch**. The final gate built exactly the published c
 The documentation commit that contains this report is made after the gate and changes only
 `docs/`. No code, test, resource, Gradle or workflow file differs between the built head
 `275c54a` and the documentation head; the artifact-to-source identity below therefore remains
-exact.
+exact. The first documentation head, `690ad4c9e579b24019cddbead0ec1aca64b4a52e`, was itself gated
+in run 44131731875 (build, release, release-guard all success); later documentation-only commits
+change no code.
 
 **Device smoke and external-Office compatibility are NOT verified.** They are listed in §8 and
 must not be reported as passing.

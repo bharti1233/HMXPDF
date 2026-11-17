@@ -506,6 +506,7 @@ development branch head at verification time.
 |---|---|---|---|
 | 44122819387 | `db6091c` | failure | test compile: `undo()`/`redo()` return `Unit`, not `Boolean` |
 | 44124495265 | `275c54a` | **success** | final 4.3–4.6 gate (build, release, release-guard) |
+| 44131731875 | `690ad4c` | **success** | documentation head re-gate (build, release, release-guard); later doc-only commits change no code |
 
 ### Not verified / remaining limits (device smoke explicitly not run)
 

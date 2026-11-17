@@ -14,7 +14,9 @@ release-guard all succeeded; debug APK 171,426,738 B, signed release APK set 134
 (universal APK 86,075,076 B), AAB 51,319,340 B. Device-only items (API 23/current, low RAM,
 no-GMS, offline voice installation, audio focus, force-stop recovery and external
 Word/LibreOffice reopen) remain unexecuted and are recorded in
-`docs/HMXPDF_FINAL_PROJECT_VERIFICATION_REPORT.md`. Per instruction, `main` is not pushed.
+`docs/HMXPDF_FINAL_PROJECT_VERIFICATION_REPORT.md`. The documentation head `690ad4c` was itself
+gated in run 44131731875 (build, release, release-guard all success); later documentation-only
+commits change no code. Per instruction, `main` is not pushed.
 
 ## Phase 4.3 implementation — 2026-11-17 (CI run 44120403325; final 44124495265)
 
