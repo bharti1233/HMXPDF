@@ -4,6 +4,7 @@ import com.hmx.pdf.docx.DocPara
 import com.hmx.pdf.docx.DocTable
 import com.hmx.pdf.docx.DocxFixtures
 import com.hmx.pdf.docx.DocxReader
+import com.hmx.pdf.docx.DocxTables
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -85,8 +86,10 @@ class DocxTablesViewModelTest {
         val anchor = view.table().rows[0].cells[0]
 
         assertTrue(view.mergeTableCells(id, anchor.id, 2, 2))
+        // A 2x2 merge leaves one spanning cell in each covered row.
         assertEquals(1, view.table().rows[0].cells.size)
-        assertEquals(2, view.table().rows[1].cells.size - 1)
+        assertEquals(1, view.table().rows[1].cells.size)
+        assertEquals(2, DocxTables.columnCount(view.table()))
 
         assertTrue(view.splitTableCell(id, anchor.id))
         assertEquals(2, view.table().rows[0].cells.size)
