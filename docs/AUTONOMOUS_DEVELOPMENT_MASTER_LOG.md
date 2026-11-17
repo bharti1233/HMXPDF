@@ -1,5 +1,16 @@
 # HMXPDF autonomous development master log
 
+## Main synchronization — 2026-11-17
+
+GitHub default branch is `release/hmxpdf-2.1.1-build`; it carries the development work.
+Before further Phase 4 work, `main` was synchronized by fast-forward from `de40322` to the
+verified development head `4c406e4` (0 commits unique to main, 37 unique to the development
+branch). `backup/main-before-phase4-sync-2026-11-17` was created and verified at the original
+main commit before any change. No force-push, reset, clean or deletion was used. All Phase 1–4.0
+final commits and the Phase 4.1 recovery repair are reachable from main; their CI runs are green.
+Phase 4.1 remains open — the synchronized baseline includes in-progress work that is documented
+as open, not as complete. Full evidence: `docs/MAIN_BRANCH_SYNCHRONIZATION_REPORT.md`.
+
 ## Recovery audit update — 2026-11-17
 
 Resumed after server restart cancelled the CI monitor. Run 43993526471 for `e562454`
