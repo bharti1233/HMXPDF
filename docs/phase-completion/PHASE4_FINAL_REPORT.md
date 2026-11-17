@@ -1,12 +1,12 @@
 # Phase 4 final report (autonomous master-flow convention)
 
-> **2026-11-17 correction: Phase 4.1 reopened.** Its successful builds are valid build
-> evidence, but the completion verdict below is superseded. A source audit found a
-> checkpoint publication crash window and recovered packages using the wrong source mirror
-> on later saves. Repair `aab606f` is published; CI run 43992838288 is pending. Further
-> save/checkpoint concurrency, retry, storage-bound and inaccessible-source recovery checks
-> remain required before proceeding to Phase 4.2. The original tests did not establish
-> interruption safety at every boundary or device process-death behavior.
+> **2026-11-17 correction: Phase 4.1 was reopened and is now complete.** Its first green
+> builds were valid build evidence, but a source audit found a checkpoint publication crash
+> window, recovered packages using the wrong source mirror on later saves, non-immutable
+> spreadsheet saves, unbounded generations and unswept crash temps. Repairs
+> `aab606f` → `e562454` → `4c406e4` → `0d72242` closed those paths; final run 44044415038 is
+> success. Device-only scenarios (real force-stop/reboot, revoked URI, real ENOSPC) remain
+> unverified and are listed as limits in the 4.1 section.
 
 Scope basis: `docs/fresh-audit/HMXPDF_MASTER_IMPLEMENTATION_ROADMAP.md` (Phase 4.0–4.6) and
 `docs/fresh-audit/HMXPDF_FEATURE_GAP_ANALYSIS.md` — the five Phase 4 planning documents named in
@@ -19,7 +19,7 @@ invented beyond these two approved documents and the FA defect register
 | Sub-phase | Scope (roadmap) | Status |
 |---|---|---|
 | 4.0 Foundation | Save coordinator, package-safe splicing, package-inclusive session state, shared fixtures, resolve skipped recovery tests | **IMPLEMENTED AND CI VERIFIED** (below) |
-| 4.1 Autosave & recovery | Autosave, recovery checkpoints, save reliability, disk-full handling, retry, process-death recovery | **IMPLEMENTED AND CI VERIFIED** (below) |
+| 4.1 Autosave & recovery | Autosave, recovery checkpoints, save reliability, disk-full handling, retry, process-death recovery | **COMPLETE** (CI verified below; device scenarios listed as limits) |
 | 4.2 Advanced tables | Structural row/col ops, merge/split, borders, shading, cell margins, row heights | Not started |
 | 4.4 Footnotes/endnotes | Note part structure and editing | Not started |
 | 4.3 Spell checking | Local engine, suggestions, safe cross-run replacement | Not started |
@@ -111,72 +111,92 @@ pre-existing `@Ignore`d Android-Context-only classes, untouched) with 0 failures
 
 ## Phase 4.1 — Autosave and document recovery: COMPLETE (CI verified)
 
-Published head: `e36abbb93e1cd1eaccc1115142bb9416c3ac26cf`.
-CI runs: https://github.com/bharti1233/Hmxpdf/actions/runs/43949208216 (DOCX editor, head `df0848c`)
-and https://github.com/bharti1233/Hmxpdf/actions/runs/43951540104 (spreadsheet wiring, head
-`e36abbb`) — both completed/success; artifacts (debug APK 170.82 MB, signed release APK 134.65 MB,
-AAB 51.20 MB) correspond to the published head (remote verified).
+Published head: `0d72242dede86ddaec1c7e56d6cab015220d02ad`.
+Verification run: https://github.com/bharti1233/Hmxpdf/actions/runs/44044415038 — `build`,
+`release` and `release-guard` all completed/success. Artifacts: debug APK 170,830,525 bytes
+(artifact 14311642159), signed release APK 134,671,621 bytes (14310593891), AAB 51,197,800 bytes
+(14310374040). The workflow checked out `0d72242…`, matching the published development branch head.
+
+Phase 4.1 was reopened after its first green build: a source audit found interruption and
+concurrency defects the original tests did not cover. This completion claim covers the repaired
+protocol below; the earlier `e36abbb` verdict is superseded.
 
 ### What was implemented
 
 - **`EditorCheckpointStore`** (`data/repository`): one complete, validated package per document
   identity — sha-256 of the source URI, never the display name — under `noBackupFilesDir`.
-  Commit protocol: copy to temp → validate (reuses `SaveRecovery.validateOfficePackage`) → fsync
-  → atomic rename (commit point 1) → metadata temp+rename (commit point 2). The last known-good
-  checkpoint survives disk-full, mid-write interruption and death before the metadata rename;
-  metadata carries version, identity, display name, kind (docx/xlsx), checkpoint hash, sticky
-  originalHash (the opened destination's hash, for conflict labeling), generation, createdAt,
-  session UUID. `find` refuses checkpoints whose bytes no longer match the recorded hash and
-  cleans unusable leftovers. No second writer: checkpoints are produced through the same
-  writer-generated complete packages the save path builds.
-- **`AutosaveCoordinator`**: deterministic scheduling core — ~2 s idle debounce after the last
-  edit, 15 s bounded maximum dirty interval (continuous typing still checkpoints), one write at
-  a time, edits during a write coalesce into exactly one immediate follow-up; a running write is
-  never cancelled by continued typing. Pure, clock-injected.
-- **DOCX editor wiring** (`DocxEditorViewModel`): every mutation path (body `commit`, undo/redo,
-  settings/HF package edits) feeds the coordinator; checkpoint writes ride the 4.0
-  `SaveCapture` discipline (one captured generation per write); a successful manual save stops
-  scheduling and deletes the stored checkpoint (a recovered copy never outlives the save it
-  protected); `load()` discovers a pending checkpoint and offers recover/discard/later;
-  recovery loads the checkpoint package, marks the document dirty against the opened original
-  (no false clean state), restarts undo (roadmap-sanctioned) and labels stale originals
-  (destination changed since the checkpoint) via the mirror hash comparison.
-- **Spreadsheet wiring** (`SpreadsheetViewModel`): the same pipeline — coordinator + xlsx
-  checkpoints; push/undo/redo touch the schedule; the op-log size is the checkpoint delta;
-  save clears the store; recovery restarts the op log with `savedAt = -1` (dirty until a real
-  save). Legacy .xls is read-only and therefore naturally never checkpoints.
-- **UI**: recovery prompts in both editors using the established dialog components
-  (`GlassDialog` in the DOCX editor; `UnsavedChangesDialog` with checkpoint labels in the
-  spreadsheet), strings localized in all 7 locales (reusing the save-recovery Discard/Later
-  conventions).
-- **WorkManager cleanup**: intentionally not added (the roadmap marks it optional/deferred);
-  cleanup happens per-document on save/discard and corrupt leftovers self-clean on `find`.
+  Commit protocol: copy to a new immutable generation → validate (`SaveRecovery.validateOfficePackage`)
+  → fsync → rename the package → write and fsync metadata → rename metadata (the single publication
+  point). Until that publication the previous package and metadata are untouched; a failure or
+  cancellation deletes only the new generation and temps. After publication superseded generations
+  and interrupted temps are pruned, so storage is bounded to one package plus metadata per document.
+  `find` validates identity, recorded hash and package structure, refuses orphans, and retires only
+  the observed session via `clearIfCurrent` (a newer checkpoint is never deleted by an older save).
+- **`AutosaveCoordinator`**: deterministic scheduling core — ~2 s idle debounce, 15 s bounded
+  maximum dirty interval, one write at a time, edits during a write coalesce into one follow-up.
+  A failed write returns a 15 s retry delay and stays dirty without needing another keystroke.
+- **DOCX editor wiring** (`DocxEditorViewModel`): body/undo/redo/settings changes feed the
+  coordinator; checkpoint writes use the 4.0 `SaveCapture` discipline extended with source file,
+  display name and identity (one captured generation, unique temp output). A successful save marks
+  only the captured generation saved, retires only the checkpoint it observed, and keeps newer
+  edits scheduled. Recovery copies the checkpoint into a matching local source package so later
+  saves patch recovered content, restarts undo, marks the document dirty and labels stale originals
+  via the mirror hash.
+- **Spreadsheet wiring** (`SpreadsheetViewModel`): an immutable `SheetCapture` (source mirror,
+  display name, op list, identity) now feeds checkpoint writes, manual save, PDF export and share.
+  A manual save acknowledges only an exact op-log match; edits made during the save remain dirty and
+  scheduled. Cleanup is generation-aware, and patched temp files are deleted after save/export.
+  Recovery restarts the op log with `savedAt = -1` (dirty until a real save); legacy .xls is
+  read-only and never checkpoints.
+- **Temp-file bounds** (`EditorTempFiles`): at editor load, crash-orphaned patched files older than
+  1 hour and recovery mirrors older than 24 hours are removed. Only editor-owned names are touched;
+  fresh files that may belong to an in-flight save/share/conversion are preserved.
+- **UI**: recovery prompts reuse the existing dialogs (`GlassDialog`, `UnsavedChangesDialog`), with
+  strings in all 7 locales.
+- **WorkManager cleanup**: intentionally not added (optional/deferred in the roadmap); bounded
+  per-document storage plus the age sweep replace it.
 
 ### Tests
 
-- `AutosaveCoordinatorTest` (7, fake clock): idle debounce, bounded interval, clean-document
-  no-schedule, single-write mutual exclusion, coalesced follow-up, no-op write end, save reset.
-- `EditorCheckpointStoreTest` (8): metadata round trip, display-name non-identity, generation
+- `AutosaveCoordinatorTest` (8, fake clock): idle debounce, bounded interval, clean no-schedule,
+  single-write exclusion, coalesced follow-up, no-op end, save reset, failed-write retry without a
+  new keystroke.
+- `EditorCheckpointStoreTest` (12): metadata round trip, display-name non-identity, generation
   increments with sticky originalHash, failed commit keeps the prior checkpoint, corrupted
-  checkpoint refused+cleaned, clear, unknown identity, key stability.
-- CI (run 43951540104): 305 executed, 0 failures, 42 pre-existing skips.
+  checkpoint refused without deleting evidence, interrupted publication keeps the prior generation,
+  bounded generation storage, failed publication leaves no generation, identity mismatch refused,
+  clear, unknown identity, key stability.
+- `EditorTempFilesTest` (1): only stale editor intermediates are removed; fresh and unrelated cache
+  files survive.
+- The full JVM test tasks (`testPlayDebugUnitTest`, `:pdf-core:test`, `:ocr-core:test`) passed in the
+  verification run. 42 pre-existing skips remain (`OfficeEngineDownloadTest` needs an Android
+  context); no test was disabled or skipped to obtain this result.
 
 ### CI history for this sub-phase
 
-| Run | Commit | Result | Root cause of failure |
+| Run | Commit | Result | Note |
 |---|---|---|---|
-| 43946472274 | `f58a6ec` | failure | Kotlin visibility: public property exposing the internal `Checkpoint` type → fixed `67e249a` |
-| 43947101199 | `67e249a` | failure | test-only: `listFiles()` NPE on a deliberately deleted directory → fixed `df0848c` |
-| 43949208216 | `df0848c` | success | — (DOCX editor verification) |
-| 43951540104 | `e36abbb` | **success** | — (spreadsheet wiring verification) |
+| 43946472274 | `f58a6ec` | failure | public property exposed internal `Checkpoint` type → fixed `67e249a` |
+| 43947101199 | `67e249a` | failure | test-only `listFiles()` NPE on a deleted directory → fixed `df0848c` |
+| 43949208216 | `df0848c` | success | DOCX editor verification |
+| 43951540104 | `e36abbb` | success | spreadsheet wiring (later superseded by the audit) |
+| 43992838288 | `aab606f` | success | checkpoint publication + recovery-source repair |
+| 43993526471 | `e562454` | success | autosave retry + detached follow-up |
+| 43994949152 | `4c406e4` | success | generation-aware cleanup + source capture |
+| 44043818080 | `a4d7145` | failure | compile: `cacheDir` is already a `File` → fixed `0d72242` |
+| 44044415038 | `0d72242` | **success** | final 4.1 verification (build, release, release-guard) |
 
 ### Not verified / remaining limits
 
-- Process-death recovery is proven at the store/decision level on the JVM (validate/rename
-  protocol, metadata, staleness) plus inspection of the VM wiring; a real force-stop/restart
-  cycle on a device is not executed by CI (no emulator) — the roadmap's on-device scenarios
-  (revoked URI live behavior, device restart, force-stop-then-launch) remain device-verified
-  work.
-- The 2 s/15 s constants are the roadmap's defaults, unprofiled (roadmap: configurable after
-  device profiling).
+- No device/emulator run: real force-stop process death, device reboot, a URI revoked mid-session,
+  and actual ENOSPC on a full device are **not** executed by CI. The store's publication and
+  failure boundaries are covered by injected-failure JVM tests; device behaviour remains
+  unverified.
+- The 2 s/15 s constants are roadmap defaults, unprofiled on device.
+- ENOSPC handling is reasoned and injection-tested at the checkpoint/store boundary; the SAF write
+  path is protected by `SaveRecovery` (prepare/backup/journal before touching the destination), but
+  a real full-disk device run was not performed.
+- The spreadsheet capture snapshots the op list, which is self-contained for values/formatting, but
+  the writer still reads the session's style table; concurrent style derivation during a save is
+  not stress-tested.
 - No WorkManager-based opportunistic cleanup (optional per roadmap).

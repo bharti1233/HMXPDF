@@ -1,6 +1,16 @@
 # HMXPDF autonomous development master log
 
-## Phase 4.1 audit round 2 — 2026-11-17 (CI pending)
+## Phase 4.1 complete — 2026-11-17
+
+Final head `0d72242`; CI run 44044415038 success (build, release, release-guard), checked-out
+commit equals the published branch head. Debug APK 170,830,525 B, signed release APK
+134,671,621 B, AAB 51,197,800 B. The reopened audit repaired publication crash windows, wrong
+recovery source mirrors, live-state spreadsheet saves, unbounded generations, unconditional
+checkpoint deletion and unswept crash temps; regression tests cover each boundary. Device-only
+process-death/reboot/revoked-URI/real-ENOSPC scenarios remain unverified and are documented as
+limits. `main` is fast-forwarded to the same verified head. Next: Phase 4.2 (advanced tables).
+
+## Phase 4.1 audit round 2 — 2026-11-17 (superseded by the completion entry above)
 
 Source audit after the synchronization found and repaired: spreadsheet saves captured live state
 on the IO thread and acknowledged edits made during the save (now an immutable `SheetCapture`
