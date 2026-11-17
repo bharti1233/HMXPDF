@@ -328,6 +328,7 @@ class DocxEditorViewModel : ViewModel() {
     private fun scheduleCheckpoint() {
         val context = appContext ?: return
         val delayMs = autosave.touch(System.currentTimeMillis(), dirty)
+        if (!dirty) { autosaveJob?.cancel(); autosaveJob = null }
         if (delayMs == AutosaveCoordinator.NONE) return
         autosaveJob?.cancel()
         autosaveJob = viewModelScope.launch {
@@ -343,6 +344,7 @@ class DocxEditorViewModel : ViewModel() {
      * running write is never cancelled by continued typing.
      */
     private fun writeCheckpoint(context: Context) {
+        if (!dirty) return
         if (checkpointJob?.isActive == true) return
         val cap = saveCapture() ?: return
         val fp = snap()
@@ -932,12 +934,19 @@ class DocxEditorViewModel : ViewModel() {
      * and [recordSaved] consume exactly this — re-reading the live fields from the write thread let
      * edits made during a slow save change the output or be acknowledged as saved when they weren't.
      */
-    internal data class SaveCapture(val pkg: DocxPackage, val doc: DocState, val extras: DocxWriter.Extras)
+    internal data class SaveCapture(
+        val pkg: DocxPackage,
+        val doc: DocState,
+        val extras: DocxWriter.Extras,
+        val source: File? = null,
+        val fileName: String = "document.docx"
+    )
 
     internal fun saveCapture(): SaveCapture? {
         val p = pkg ?: return null
         val d = doc ?: return null
-        return SaveCapture(p, d, extras())
+        return SaveCapture(p, d, extras(),
+            meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File), meta.fileName)
     }
 
     /** The save succeeded: body and package snapshots become the dirty baseline (also a test seam). */
@@ -949,19 +958,11 @@ class DocxEditorViewModel : ViewModel() {
         packageSavedSettings = capture.extras.settings ?: capture.pkg.settings
         packageSavedHf.clear()
         packageSavedHf.putAll(capture.extras.hfSave)
-        // The destination now holds this generation: the checkpoint's purpose is served. Stop
-        // scheduling and drop the stored checkpoint — a recovered copy must never outlive the
-        // successful save it was protecting.
-        val context = appContext
-        val key = meta.sourceUri?.toString()
         lastCheckpointFp = null
         autosave.onSaved()
         autosaveJob?.cancel(); autosaveJob = null
-        if (context != null && key != null) {
-            viewModelScope.launch(Dispatchers.IO) {
-                runCatching { EditorCheckpointStore.clear(context, key) }
-            }
-        }
+        // A slow manual save can acknowledge an older generation. Keep protecting newer edits.
+        if (dirty) scheduleCheckpoint()
     }
 
     /** Legacy test seam: record the current session state as saved. */
@@ -974,11 +975,9 @@ class DocxEditorViewModel : ViewModel() {
     internal fun writerExtras() = extras()
 
     private fun buildPatched(context: Context, capture: SaveCapture): File? {
-        val src = meta.fileUri?.takeIf { it.scheme == "file" }?.path?.let(::File) ?: return null
+        val src = capture.source ?: return null
         val dir = File(context.cacheDir, "docs").apply { mkdirs() }
-        val safe = meta.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "document.docx" }
-            .let { if (it.lowercase().endsWith(".docx")) it else "$it.docx" }
-        val out = File(dir, "edited_${System.currentTimeMillis()}_$safe")
+        val out = File.createTempFile("edited-", ".docx", dir)
         return runCatching { DocxWriter.write(capture.pkg, capture.doc, src, out, capture.extras); out }
             .getOrElse { out.delete(); null }
     }
@@ -1003,7 +1002,11 @@ class DocxEditorViewModel : ViewModel() {
         // speak exactly this capture, never the live session state.
         val capture = saveCapture() ?: return onDone(SaveResult.Failed("Couldn't write the document."))
         meta = meta.copy(saving = true)
+        val identity = meta.sourceUri?.toString()
         viewModelScope.launch {
+            val checkpointBeforeSave = withContext(Dispatchers.IO) {
+                identity?.let { EditorCheckpointStore.find(context, it) }
+            }
             val result = withContext(Dispatchers.IO) {
                 val patched = buildPatched(context, capture) ?: return@withContext SaveResult.Failed("Couldn't write the document.")
                 try {
@@ -1011,7 +1014,7 @@ class DocxEditorViewModel : ViewModel() {
                         context = context,
                         uri = dest,
                         file = patched,
-                        displayName = meta.fileName,
+                        displayName = capture.fileName,
                         requireBackup = target == null
                     )) {
                         WriteResult.Success -> SaveResult.Saved
@@ -1024,7 +1027,14 @@ class DocxEditorViewModel : ViewModel() {
                 }
             }
             meta = meta.copy(saving = false)
-            if (result is SaveResult.Saved) recordSaved(capture)
+            if (result is SaveResult.Saved) {
+                recordSaved(capture)
+                if (!dirty && checkpointBeforeSave != null) {
+                    withContext(Dispatchers.IO) {
+                        EditorCheckpointStore.clearIfCurrent(context, checkpointBeforeSave)
+                    }
+                }
+            }
             onDone(result)
         }
     }

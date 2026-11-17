@@ -72,6 +72,18 @@ internal object EditorCheckpointStore {
     fun clear(context: Context, sourceUri: String) =
         clear(File(context.noBackupFilesDir, ROOT), sourceUri)
 
+    fun clearIfCurrent(context: Context, checkpoint: Checkpoint): Boolean =
+        clearIfCurrent(File(context.noBackupFilesDir, ROOT), checkpoint)
+
+    /** A save may only retire the generation it observed, never a newer recovery copy. */
+    @Synchronized
+    internal fun clearIfCurrent(root: File, checkpoint: Checkpoint): Boolean {
+        val current = find(root, checkpoint.originalUri) ?: return false
+        if (current.sessionId != checkpoint.sessionId) return false
+        clear(root, checkpoint.originalUri)
+        return true
+    }
+
     // ── File-rooted core (JVM-testable) ───────────────────────────────────────
 
     @Synchronized

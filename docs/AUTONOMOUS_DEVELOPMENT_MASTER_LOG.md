@@ -2,6 +2,15 @@
 
 ## Recovery audit update — 2026-11-17
 
+Resumed after server restart cancelled the CI monitor. Run 43993526471 for `e562454`
+was still running on resumption (release and release-guard subsequently succeeded; build
+pending). Additional repairs capture the DOCX source mirror and output name with document
+state, use unique output files, retire checkpoints only by matching generation, keep newer
+edits scheduled after save, compare spreadsheet checkpoint operation lists rather than their
+length, and cancel pending debounce when the document becomes clean. A regression test
+covers stale save cleanup attempting to delete a newer checkpoint. Spreadsheet immutable
+save capture and concurrent save acknowledgement remain under audit; no completion claimed.
+
 Phase 4.1 is REOPENED; earlier completion statements below are superseded. Green CI did not
 prove interruption safety. Source audit found replacement of package bytes before metadata
 publication could invalidate the previous checkpoint, and recovery kept using the original

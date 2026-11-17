@@ -87,7 +87,7 @@ class SpreadsheetViewModel : ViewModel() {
     private var autosaveJob: Job? = null
     private var checkpointJob: Job? = null
     /** `applied.size` the last committed checkpoint captured (the op log is the whole delta). */
-    private var lastCheckpointedOps = -1
+    private var lastCheckpointedOps: List<EditOp>? = null
 
     internal var pendingCheckpoint by mutableStateOf<EditorCheckpointStore.Checkpoint?>(null)
         private set
@@ -141,7 +141,7 @@ class SpreadsheetViewModel : ViewModel() {
             pendingCheckpoint = found
             pendingCheckpointStale = found != null && found.originalHash.isNotEmpty() &&
                 originalHash != null && found.originalHash != originalHash
-            if (found != null) lastCheckpointedOps = Int.MIN_VALUE // stale: never reuse across sessions
+            lastCheckpointedOps = null
             if (wb != null) withContext(Dispatchers.IO) {
                 runCatching {
                     RecentFilesManager.addRecent(
@@ -219,14 +219,18 @@ class SpreadsheetViewModel : ViewModel() {
 
     private fun resetAutosave() {
         autosave.onSaved(); autosaveJob?.cancel(); checkpointJob?.cancel()
-        autosaveJob = null; checkpointJob = null; lastCheckpointedOps = -1
+        autosaveJob = null; checkpointJob = null; lastCheckpointedOps = null
         pendingCheckpoint = null; pendingCheckpointStale = false
     }
 
     private fun scheduleCheckpoint() {
         val context = appContext ?: return
         val st = _state.value
-        if (!st.dirty || st.workbook?.editable != true) return
+        if (!st.dirty || st.workbook?.editable != true) {
+            autosave.touch(System.currentTimeMillis(), dirty = false)
+            autosaveJob?.cancel(); autosaveJob = null
+            return
+        }
         val delayMs = autosave.touch(System.currentTimeMillis(), dirty = true)
         if (delayMs == AutosaveCoordinator.NONE) return
         autosaveJob?.cancel()
@@ -237,11 +241,12 @@ class SpreadsheetViewModel : ViewModel() {
     }
 
     private fun writeCheckpoint(context: Context) {
+        if (!_state.value.dirty) return
         if (checkpointJob?.isActive == true) return
         val st = _state.value
-        if (applied.size == lastCheckpointedOps) return
+        if (applied == lastCheckpointedOps) return
         if (!autosave.beginWrite()) return
-        val ops = applied.size
+        val ops = applied.toList()
         checkpointJob = viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
@@ -297,7 +302,7 @@ class SpreadsheetViewModel : ViewModel() {
             applied.clear(); redoStack.clear(); savedAt = -1
             publish()
             autosave.onSaved()
-            lastCheckpointedOps = 0
+            lastCheckpointedOps = emptyList()
         }
     }
 
@@ -460,7 +465,7 @@ class SpreadsheetViewModel : ViewModel() {
                 publish()
                 // The destination now holds this generation: stop checkpointing and drop the
                 // stored checkpoint (it must never outlive the save it was protecting).
-                lastCheckpointedOps = applied.size
+                lastCheckpointedOps = applied.toList()
                 autosave.onSaved()
                 autosaveJob?.cancel(); autosaveJob = null
                 val ctx = appContext; val key = st.sourceUri?.toString()

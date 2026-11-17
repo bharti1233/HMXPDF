@@ -20,6 +20,17 @@ class EditorCheckpointStoreTest {
 
     private val CT_MAIN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
 
+    @Test
+    fun saveCleanupCannotDeleteANewerCheckpoint() {
+        val r = root()
+        val first = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"))!!
+        val second = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v2"))!!
+        assertFalse(EditorCheckpointStore.clearIfCurrent(r, first))
+        assertEquals(second.file, EditorCheckpointStore.find(r, "content://doc/1")!!.file)
+        assertTrue(EditorCheckpointStore.clearIfCurrent(r, second))
+        assertNull(EditorCheckpointStore.find(r, "content://doc/1"))
+    }
+
     /** A minimal valid DOCX package (what validateOfficePackage requires). */
     private fun docx(text: String): ByteArray {
         val bos = java.io.ByteArrayOutputStream()
