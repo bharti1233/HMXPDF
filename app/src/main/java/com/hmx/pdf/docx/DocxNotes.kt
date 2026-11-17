@@ -72,19 +72,19 @@ class DocxNotes(
         val removed = list.filter { it.removed && it.raw != null }
         val edited = list.filter { it.edited && !it.added && !it.removed && it.raw != null }
         val added = list.filter { it.added && !it.removed }
-        if (base == null) {
+        val head = base ?: run {
             if (added.isEmpty()) return null
             return newPart(kind, added)
         }
-        val root = XmlScan.scan(base).children.firstOrNull() ?: return null
+        val root = XmlScan.scan(head).children.firstOrNull() ?: return null
         // Original spans, so splices never disturb each other. Descending order keeps offsets valid.
         val splices = ArrayList<Pair<XNode, DocxNote>>()
         for (n in root.children) {
-            val id = n.attr(base, "id")?.toIntOrNull() ?: continue
+            val id = n.attr(head, "id")?.toIntOrNull() ?: continue
             val note = removed.firstOrNull { it.id == id } ?: edited.firstOrNull { it.id == id }
             if (note != null) splices.add(n to note)
         }
-        var out = base
+        var out: String = head
         for ((node, note) in splices.sortedByDescending { it.first.start }) {
             val text = if (note.removed) "" else serialize(note)
             out = out.substring(0, node.start) + text + out.substring(node.end)
