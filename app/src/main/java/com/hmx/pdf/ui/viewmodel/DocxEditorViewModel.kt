@@ -391,15 +391,30 @@ class DocxEditorViewModel : ViewModel() {
         val context = appContext ?: return
         viewModelScope.launch {
             val parsed = withContext(Dispatchers.IO) {
-                runCatching { ck.file.inputStream().use { DocxReader.read(it) } }.getOrNull()
+                runCatching {
+                    val source = File.createTempFile("recovered-", ".docx", context.cacheDir)
+                    try {
+                        ck.file.copyTo(source, overwrite = true)
+                        val document = source.inputStream().use { DocxReader.read(it) }
+                            ?: error("Could not read checkpoint")
+                        document to source
+                    } catch (error: Exception) {
+                        source.delete()
+                        throw error
+                    }
+                }.getOrNull()
             }
             pendingCheckpoint = null
-            val (p, d) = parsed ?: return@launch
+            val (document, source) = parsed ?: return@launch
+            val (p, d) = document
+            meta = meta.copy(fileUri = Uri.fromFile(source))
             pkg = p
             doc = d
             // The destination never received these edits: dirty against the opened original, so
             // a save is still required — never a false clean state. Undo restarts (roadmap).
             saved = original
+            undoStack.clear(); redoStack.clear()
+            canUndo = false; canRedo = false
             resetPageLayoutExtras()
             restoreEpoch++
             lastCheckpointFp = null

@@ -1,5 +1,21 @@
 # HMXPDF autonomous development master log
 
+## Recovery audit update — 2026-11-17
+
+Phase 4.1 is REOPENED; earlier completion statements below are superseded. Green CI did not
+prove interruption safety. Source audit found replacement of package bytes before metadata
+publication could invalidate the previous checkpoint, and recovery kept using the original
+package as the subsequent writer source. Repairs now use immutable generation filenames with
+a single metadata publication point, sync metadata after writing, retain unreadable recovery
+data, and copy recovered packages into matching editor source mirrors. An injected failure
+before metadata publication verifies preservation of the previously committed generation.
+
+Validation so far: `git diff --check` passed; no local Gradle/APK builds. New CI verification
+is pending. Phase 4.2 must wait for the reopened foundation gate. Remaining audit items include
+save/checkpoint races, newer edits during save, spreadsheet op identity versus list length,
+retry scheduling, startup recovery with inaccessible originals, and storage bounds. Earlier
+claims that all these scenarios were covered by the original JVM tests were too broad.
+
 Recovery point for autonomous phase-by-phase work. Update after every meaningful operation.
 
 ## Environment and identity

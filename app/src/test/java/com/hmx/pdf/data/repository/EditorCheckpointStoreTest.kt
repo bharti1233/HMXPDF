@@ -97,12 +97,30 @@ class EditorCheckpointStoreTest {
     }
 
     @Test
-    fun aCorruptedCheckpointIsRefusedAndCleaned() {
+    fun aCorruptedCheckpointIsRefusedWithoutDeletingRecoveryData() {
         val r = root()
         val ck = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"), null)!!
         ck.file.writeBytes(ck.file.readBytes().copyOfRange(0, 10)) // truncate: hash no longer matches
         assertNull(EditorCheckpointStore.find(r, "content://doc/1"))
-        assertFalse(ck.directory.exists()) // unusable leftovers removed entirely
+        assertTrue(ck.directory.exists()) // retain evidence and other generations
+    }
+
+    @Test
+    fun interruptionAfterPackageWriteKeepsThePreviouslyPublishedGeneration() {
+        val r = root()
+        val first = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v1"), "original")!!
+        val firstBytes = first.file.readBytes()
+        val failed = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v2"), "original") {
+            throw java.io.IOException("Injected failure before metadata publication")
+        }
+        assertNull(failed)
+        val recovered = EditorCheckpointStore.find(r, "content://doc/1")!!
+        assertEquals(first.file, recovered.file)
+        assertTrue(firstBytes.contentEquals(recovered.file.readBytes()))
+        assertEquals(first.generation, recovered.generation)
+        val next = EditorCheckpointStore.commit(r, "content://doc/1", "d.docx", "docx", complete("v3"), "original")!!
+        assertEquals(first.generation + 1, next.generation)
+        assertEquals(next.file, EditorCheckpointStore.find(r, "content://doc/1")!!.file)
     }
 
     @Test

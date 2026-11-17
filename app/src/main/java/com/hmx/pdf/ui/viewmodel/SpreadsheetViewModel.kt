@@ -272,13 +272,26 @@ class SpreadsheetViewModel : ViewModel() {
     /** Uses the last committed checkpoint as the current workbook (recovery offer → Recover). */
     fun recoverPendingCheckpoint() {
         val ck = pendingCheckpoint ?: return
+        val context = appContext ?: return
         viewModelScope.launch {
             val parsed = withContext(Dispatchers.IO) {
-                runCatching { ck.file.inputStream().use { XlsxReader.read(it) } }.getOrNull()
+                runCatching {
+                    val source = File.createTempFile("recovered-", ".xlsx", context.cacheDir)
+                    try {
+                        ck.file.copyTo(source, overwrite = true)
+                        val workbook = source.inputStream().use { XlsxReader.read(it) }
+                            ?: error("Could not read checkpoint")
+                        workbook to source
+                    } catch (error: Exception) {
+                        source.delete()
+                        throw error
+                    }
+                }.getOrNull()
             }
             pendingCheckpoint = null
-            if (parsed == null || !parsed.sheets.any { !it.hidden }) return@launch
-            _state.value = _state.value.copy(workbook = parsed, error = null)
+            val (workbook, source) = parsed ?: return@launch
+            if (!workbook.sheets.any { !it.hidden }) { source.delete(); return@launch }
+            _state.value = _state.value.copy(workbook = workbook, fileUri = Uri.fromFile(source), error = null)
             // The checkpoint holds the whole edited state: the op log restarts, and the
             // destination never received these edits — dirty forever until a real save.
             applied.clear(); redoStack.clear(); savedAt = -1

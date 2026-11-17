@@ -14,10 +14,9 @@ import java.util.UUID
  *
  * Identity is the sha-256 of the source URI string — never the display name (two documents may
  * share a name; a URI does not change because the user renamed it). One checkpoint is kept per
- * document: a commit writes a temp copy, validates it, and atomically renames it over the
- * previous checkpoint, so the last known-good checkpoint survives every interruption — including
- * disk-full (the failed temp is deleted and the prior files are untouched) and death before the
- * metadata rename (the previous metadata still names the previous checkpoint).
+ * document: a commit writes a new immutable generation, validates it, then publishes its filename
+ * through the metadata rename. Until publication, the previous metadata and package remain intact.
+ * An interrupted generation is never substituted for the last committed one.
  *
  * [originalHash] is the hash of the destination as it was when the document was opened; recovery
  * compares it against the current original to label conflicts ("the file changed since this
@@ -75,37 +74,38 @@ internal object EditorCheckpointStore {
 
     // ── File-rooted core (JVM-testable) ───────────────────────────────────────
 
+    @Synchronized
     internal fun commit(
         root: File,
         identity: String,
         displayName: String,
         kind: String,
         complete: File,
-        originalHash: String? = null
+        originalHash: String? = null,
+        beforePublish: () -> Unit = {}
     ): Checkpoint? {
         require(kind == "docx" || kind == "xlsx") { "Unsupported document kind" }
         if (!complete.isFile || complete.length() <= 0L) return null
         val dir = File(root, keyFor(identity))
-        val tmp = File(dir, "checkpoint.tmp")
-        val target = File(dir, "checkpoint.$kind")
-        val metaTmp = File(dir, "$META.tmp")
+        val generationId = UUID.randomUUID().toString()
+        val tmp = File(dir, "$generationId.tmp")
+        val target = File(dir, "checkpoint-$generationId.$kind")
+        val metaTmp = File(dir, "$generationId.meta.tmp")
         val meta = File(dir, META)
         try {
             if (!dir.isDirectory && !dir.mkdirs()) return null
             copyValidated(complete, tmp, kind) ?: return null
             val hash = sha256(tmp)
-            // Commit point 1: the package. The rename is atomic on the same volume, so a reader
-            // sees either the previous checkpoint or this one — never a partial file.
-            if (!tmp.renameTo(target)) return null
             val previous = readCheckpoint(dir, kind)
-            // Commit point 2: the metadata that makes it discoverable. Until this rename the
-            // previous metadata (if any) still describes the previous checkpoint. The original
-            // hash is sticky: it describes the opened destination, not the checkpoint.
+            // This immutable package is not discoverable until metadata names it.
+            if (!tmp.renameTo(target)) return null
+            // The metadata rename is the only publication point.
             val properties = Properties().apply {
                 setProperty("version", VERSION.toString())
                 setProperty("identity", identity)
                 setProperty("displayName", displayName)
                 setProperty("kind", kind)
+                setProperty("file", target.name)
                 setProperty("checkpointHash", hash)
                 setProperty("generation", ((previous?.generation ?: 0L) + 1L).toString())
                 setProperty("createdAt", System.currentTimeMillis().toString())
@@ -113,9 +113,10 @@ internal object EditorCheckpointStore {
                 setProperty("originalHash", originalHash ?: previous?.originalHash ?: "")
             }
             FileOutputStream(metaTmp).use { out ->
-                out.fd.sync()
                 properties.store(out, "HMXPDF editor checkpoint")
+                out.fd.sync()
             }
+            beforePublish()
             if (!metaTmp.renameTo(meta)) return null
             return readCheckpoint(dir, kind)
         } catch (cancellation: java.util.concurrent.CancellationException) {
@@ -150,22 +151,17 @@ internal object EditorCheckpointStore {
         }
     }
 
+    @Synchronized
     internal fun find(root: File, identity: String): Checkpoint? {
         val dir = File(root, keyFor(identity))
         if (!dir.isDirectory) return null
-        val kind = listOf("docx", "xlsx").firstOrNull { File(dir, "checkpoint.$it").isFile } ?: return run {
-            // Metadata without a package: unusable leftovers, clean them up.
-            dir.deleteRecursively()
-            null
-        }
-        return readCheckpoint(dir, kind)?.takeIf { checkpoint ->
-            // A checkpoint that no longer matches its recorded bytes is not a recovery source.
-            sha256(checkpoint.file) == checkpoint.checkpointHash
-        } ?: run {
-            // Unusable leftovers (corrupt/truncated): clean them so they never surface later.
-            dir.deleteRecursively()
-            null
-        }
+        return runCatching {
+            readCheckpoint(dir, "docx")?.takeIf { checkpoint ->
+                checkpoint.originalUri == identity &&
+                    sha256(checkpoint.file) == checkpoint.checkpointHash &&
+                    SaveRecovery.validateOfficePackage(checkpoint.file, checkpoint.kind)
+            }
+        }.getOrNull()
     }
 
     private fun readCheckpoint(dir: File, kind: String): Checkpoint? {
@@ -178,14 +174,19 @@ internal object EditorCheckpointStore {
             return null
         }
         if (properties.getProperty("version")?.toIntOrNull() != VERSION) return null
-        val file = File(dir, "checkpoint.$kind")
+        val recordedKind = properties.getProperty("kind") ?: kind
+        if (recordedKind != "docx" && recordedKind != "xlsx") return null
+        // Read older checkpoints too; new commits always name an immutable generation.
+        val filename = properties.getProperty("file") ?: "checkpoint.$recordedKind"
+        if (File(filename).name != filename || !filename.endsWith(".$recordedKind")) return null
+        val file = File(dir, filename)
         if (!file.isFile) return null
         val identity = properties.getProperty("identity") ?: return null
         return Checkpoint(
             docKey = keyFor(identity),
             directory = dir,
             file = file,
-            kind = properties.getProperty("kind") ?: kind,
+            kind = recordedKind,
             displayName = properties.getProperty("displayName") ?: "Document",
             originalUri = identity,
             originalHash = properties.getProperty("originalHash") ?: "",
@@ -196,6 +197,7 @@ internal object EditorCheckpointStore {
         )
     }
 
+    @Synchronized
     internal fun clear(root: File, identity: String) {
         File(root, keyFor(identity)).deleteRecursively()
     }
