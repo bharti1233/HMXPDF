@@ -1100,4 +1100,21 @@
     <string name="docx_spell_view">Passa alla Modalità modifica per applicare un suggerimento.</string>
     <string name="docx_spell_language">Lingua: %1$s</string>
     <string name="docx_spell_hint">Tocca un suggerimento per sostituire la parola. Nulla cambia finché non lo fai.</string>
+    <string name="docx_read">Leggi ad alta voce</string>
+    <string name="docx_read_play">Riproduci</string>
+    <string name="docx_read_pause">Pausa</string>
+    <string name="docx_read_resume">Riprendi</string>
+    <string name="docx_read_stop">Interrompi</string>
+    <string name="docx_read_previous">Precedente</string>
+    <string name="docx_read_next">Successivo</string>
+    <string name="docx_read_unavailable">Nessuna voce di sintesi offline installata su questo dispositivo.</string>
+    <string name="docx_read_idle">Non è in corso alcuna lettura.</string>
+    <string name="docx_read_preparing">Preparazione della voce offline…</string>
+    <string name="docx_read_playing">Lettura ad alta voce…</string>
+    <string name="docx_read_paused">In pausa su questo paragrafo. Riprendi o continua.</string>
+    <string name="docx_read_language">Voce: %1$s</string>
+    <string name="docx_read_rate">Velocità</string>
+    <string name="docx_read_rate_value">%1$s×</string>
+    <string name="docx_read_current">In lettura: %1$s</string>
+    <string name="docx_read_hint">Si usano solo voci sul dispositivo. Modificare o uscire dalla pagina interrompe la lettura.</string>
 </resources>

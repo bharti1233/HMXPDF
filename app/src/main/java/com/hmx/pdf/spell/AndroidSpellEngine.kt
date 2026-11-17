@@ -121,7 +121,9 @@ class AndroidSpellEngine(context: Context) : SpellEngine,
                 runCatching { s.cancel() }
                 if (pending === p) pending = null
             }
-            runCatching { s.getSuggestions(words.toTypedArray(), MAX_SUGGESTIONS) }.onFailure {
+            runCatching {
+                s.getSuggestions(words.map { android.view.textservice.TextInfo(it) }.toTypedArray(), MAX_SUGGESTIONS)
+            }.onFailure {
                 pending = null
                 if (cont.isActive) cont.resume(emptyMap())
             }

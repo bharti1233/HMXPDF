@@ -39,6 +39,26 @@ preservation, id allocation, comment/note isolation, writer round trips (existin
 parts, relationship and content-type entries), VM gating, undo/redo and the save capture. No local
 Android build; CI verification is pending. Per instruction, `main` is not pushed.
 
+## Phase 4.5 implementation — 2026-11-17 (CI pending)
+
+Read Aloud is a read-only projection. `ReadingProjection` walks the document through `forEachPara`
+(body text, table cells and list items in reading order), strips object runs, excludes pending
+deletions (`w:del`) while including pending insertions, collapses whitespace, skips blank
+paragraphs, and cuts the script into ≤320-character chunks at sentence boundaries first and word
+boundaries second. `ReadingSession` is a JVM-testable state machine over `TtsEngine`: play, pause,
+resume, stop, chunk completion, previous/next paragraph, stale-callback rejection, error→paused,
+rate clamping and the unavailable state; pause is stop plus the retained chunk index because the
+Android API has no real pause. `AndroidTtsEngine` selects only a voice whose
+`isNetworkConnectionRequired` is false (a cloud voice is never selected or requested), uses
+transient audio focus, pauses on focus loss, moves TTS init/utterance callbacks onto the main
+thread, and releases focus only for the utterance that owns it so a flushed chunk cannot abandon
+the next chunk's focus. The Read panel (7 locales) shows status, voice, play/pause/resume, stop,
+previous/next, rate chips and the current chunk. Reading never edits, accepts a revision, dirties
+the file or marks a checkpoint: the highlight is a display-only `readingId`, and every edit, undo,
+document load or editor close calls `stopReading`, so a stale paragraph id can never be highlighted.
+JVM tests cover projection order/policy/chunk bounds and the full session state machine with a fake
+engine. No local Android build; CI verification is pending. Per instruction, `main` is not pushed.
+
 ## Phase 4.2 complete — 2026-11-17 (CI run 44050687595)
 
 Advanced tables: immutable `DocxTables` kernels (grid validation, table creation, row/column

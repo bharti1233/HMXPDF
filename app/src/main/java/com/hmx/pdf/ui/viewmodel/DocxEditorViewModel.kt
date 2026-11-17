@@ -43,6 +43,10 @@ import com.hmx.pdf.spell.SpellCache
 import com.hmx.pdf.spell.SpellCheck
 import com.hmx.pdf.spell.SpellEngine
 import com.hmx.pdf.spell.SpellIssue
+import com.hmx.pdf.reading.AndroidTtsEngine
+import com.hmx.pdf.reading.ReadingProjection
+import com.hmx.pdf.reading.ReadingSession
+import com.hmx.pdf.reading.TtsEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -298,6 +302,7 @@ class DocxEditorViewModel : ViewModel() {
         hfEnvelopes.clear(); hfEnvelopes.putAll(s.envelopes)
         wantSettings = s.settings; settingsChanged = s.settingsChanged
         notes = s.notes
+        invalidateReading()
     }
 
     /** Pushes the pre-change snapshot and starts a new step (typing coalesces per [key]). */
@@ -325,6 +330,7 @@ class DocxEditorViewModel : ViewModel() {
         step(key)
         doc = next
         scheduleCheckpoint()
+        invalidateReading()
     }
 
     /** One step that changes a note part only (typing in a note body). */
@@ -345,6 +351,16 @@ class DocxEditorViewModel : ViewModel() {
         doc = nextDoc
         notes = nextNotes
         scheduleCheckpoint()
+        invalidateReading()
+    }
+
+    /** Edits stop speech so a highlight can never follow text that changed under it. */
+    private fun invalidateReading() {
+        if (readingSession == null) return
+        readingAutoPlay = false
+        readingSession?.stop()
+        scriptDoc = null
+        mirrorReading()
     }
 
     /** Ends typing coalescing, so the next keystroke starts a new undo step. */
@@ -891,6 +907,130 @@ class DocxEditorViewModel : ViewModel() {
         return deviceSpell
     }
 
+    // ── read aloud (Phase 4.5) ─────────────────────────────────────────────────
+
+    /**
+     * Reading is strictly read-only: it never commits, never changes rPr and never marks the
+     * document dirty. [scriptDoc] is the generation the current script was built from; any edit
+     * calls [stopReading] and invalidates it, so a highlight can never follow edited text.
+     */
+    private var readingSession: ReadingSession? = null
+    private var readingEngine: TtsEngine? = null
+    private var scriptDoc: DocState? = null
+
+    var readingState by mutableStateOf(ReadingSession.State.IDLE)
+        private set
+    var readingParaId by mutableStateOf<Long?>(null)
+        private set
+    /** The chunk being spoken (or paused on), for the panel's "now reading" line. */
+    var readingText by mutableStateOf<String?>(null)
+        private set
+    var readingLanguage by mutableStateOf<String?>(null)
+        private set
+    var readingAvailable by mutableStateOf(true)
+        private set
+    /** True while the on-device voice is still initialising; the panel shows a short status line. */
+    var readingPreparing by mutableStateOf(false)
+        private set
+    var readingRate by mutableStateOf(1f)
+        private set
+    /** A play request that arrived before the engine finished initialising. */
+    private var readingAutoPlay = false
+
+    /** The toolbar/panel action: play when idle, pause when speaking, resume when paused. */
+    fun readAloudToggle() {
+        val session = readingSession() ?: return
+        syncReadingScript(session)
+        if (session.state == ReadingSession.State.PLAYING) session.pause()
+        else {
+            // The voice initialises asynchronously; remember the request and start when ready.
+            if (session.state == ReadingSession.State.UNAVAILABLE &&
+                readingEngine?.available != true
+            ) readingAutoPlay = true
+            session.play()
+        }
+    }
+
+    fun readAloudNextParagraph() {
+        val session = readingSession ?: return
+        syncReadingScript(session)
+        session.nextParagraph()
+    }
+
+    fun readAloudPreviousParagraph() {
+        val session = readingSession ?: return
+        syncReadingScript(session)
+        session.previousParagraph()
+    }
+
+    /** Explicit stop: also the path navigation away, an edit and unload take. */
+    fun stopReading() {
+        val session = readingSession ?: return
+        readingAutoPlay = false
+        session.stop()
+        scriptDoc = null
+        mirrorReading()
+    }
+
+    fun setReadingRate(rate: Float) {
+        val clamped = rate.coerceIn(0.5f, 2f)
+        readingRate = clamped
+        readingSession?.setRate(clamped)
+    }
+
+    private fun readingSession(): ReadingSession? {
+        val existing = readingSession
+        if (existing != null) return existing
+        val context = appContext ?: return null
+        val engine = AndroidTtsEngine(
+            context = context,
+            onFocusLost = {
+                // Losing audio focus pauses speech; the saved chunk index resumes it later.
+                readingSession?.pause()
+            },
+            onReady = {
+                readingSession?.refreshAvailability()
+                readingPreparing = false
+                val session = readingSession
+                val wanted = readingAutoPlay
+                readingAutoPlay = false
+                if (wanted && session != null && readingEngine?.available == true) {
+                    if (doc != null) syncReadingScript(session)
+                    session.play()
+                }
+                mirrorReading()
+            }
+        )
+        val session = ReadingSession(engine).also { it.onChange = { mirrorReading() } }
+        engine.rate = readingRate
+        readingEngine = engine
+        readingSession = session
+        readingPreparing = !engine.available
+        mirrorReading()
+        return session
+    }
+
+    private fun syncReadingScript(session: ReadingSession) {
+        val d = doc ?: return
+        if (d === scriptDoc) return
+        scriptDoc = d
+        session.load(ReadingProjection.chunks(ReadingProjection.segments(d.blocks)))
+    }
+
+    private fun mirrorReading() {
+        val session = readingSession ?: return
+        readingState = session.state
+        readingParaId = if (session.state == ReadingSession.State.PLAYING ||
+            session.state == ReadingSession.State.PAUSED
+        ) session.currentParaId else null
+        readingText = if (session.state == ReadingSession.State.PLAYING ||
+            session.state == ReadingSession.State.PAUSED
+        ) session.currentText else null
+        readingLanguage = readingEngine?.language
+        readingAvailable = session.state != ReadingSession.State.UNAVAILABLE &&
+            (readingEngine?.available == true)
+    }
+
     // ── tracked-change resolution ──────────────────────────────────────────────
 
     /** Resolves the one pending revision of [info] — one undo step, other revisions untouched. */
@@ -1275,6 +1415,8 @@ class DocxEditorViewModel : ViewModel() {
         spellJob?.cancel(); spellJob = null
         spellIssues = emptyList(); spellRanges = emptyMap()
         spellStatus = SpellStatus.IDLE; spellLanguage = null; spellMessage = null
+        readingAutoPlay = false; readingSession?.stop(); scriptDoc = null
+        mirrorReading()
     }
 
     /** The package half of save: header/footer parts, notes and settings ride with the body patch. */
@@ -1561,6 +1703,11 @@ class DocxEditorViewModel : ViewModel() {
         spellJob?.cancel()
         deviceSpell?.close()
         deviceSpell = null
+        readingAutoPlay = false
+        readingPreparing = false
+        readingSession?.release()
+        readingSession = null
+        readingEngine = null
         super.onCleared()
     }
 }

@@ -1070,4 +1070,21 @@
     <string name="docx_spell_view">بدّل إلى وضع التحرير لتطبيق اقتراح.</string>
     <string name="docx_spell_language">اللغة: %1$s</string>
     <string name="docx_spell_hint">اضغط على اقتراح لاستبدال الكلمة. لن يتغيّر شيء حتى تفعل ذلك.</string>
+    <string name="docx_read">القراءة بصوت عالٍ</string>
+    <string name="docx_read_play">تشغيل</string>
+    <string name="docx_read_pause">إيقاف مؤقت</string>
+    <string name="docx_read_resume">استئناف</string>
+    <string name="docx_read_stop">إيقاف</string>
+    <string name="docx_read_previous">السابق</string>
+    <string name="docx_read_next">التالي</string>
+    <string name="docx_read_unavailable">لا يوجد صوت نطق دون اتصال مثبّت على هذا الجهاز.</string>
+    <string name="docx_read_idle">لا تتم قراءة أي شيء.</string>
+    <string name="docx_read_preparing">جارٍ تجهيز الصوت دون اتصال…</string>
+    <string name="docx_read_playing">جارٍ القراءة بصوت عالٍ…</string>
+    <string name="docx_read_paused">متوقف مؤقتًا عند هذه الفقرة. استأنف أو انتقل.</string>
+    <string name="docx_read_language">الصوت: %1$s</string>
+    <string name="docx_read_rate">السرعة</string>
+    <string name="docx_read_rate_value">%1$s×</string>
+    <string name="docx_read_current">يُقرأ الآن: %1$s</string>
+    <string name="docx_read_hint">تُستخدم الأصوات على الجهاز فقط. التحرير أو مغادرة الصفحة يوقف القراءة.</string>
 </resources>

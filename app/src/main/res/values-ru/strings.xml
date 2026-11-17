@@ -1100,4 +1100,21 @@
     <string name="docx_spell_view">Переключитесь в режим редактирования, чтобы применить вариант.</string>
     <string name="docx_spell_language">Язык: %1$s</string>
     <string name="docx_spell_hint">Нажмите вариант, чтобы заменить слово. Ничего не изменится, пока вы этого не сделаете.</string>
+    <string name="docx_read">Читать вслух</string>
+    <string name="docx_read_play">Воспроизвести</string>
+    <string name="docx_read_pause">Пауза</string>
+    <string name="docx_read_resume">Продолжить</string>
+    <string name="docx_read_stop">Остановить</string>
+    <string name="docx_read_previous">Предыдущий</string>
+    <string name="docx_read_next">Следующий</string>
+    <string name="docx_read_unavailable">На этом устройстве не установлен автономный голос синтеза речи.</string>
+    <string name="docx_read_idle">Ничего не читается.</string>
+    <string name="docx_read_preparing">Подготовка автономного голоса…</string>
+    <string name="docx_read_playing">Чтение вслух…</string>
+    <string name="docx_read_paused">Пауза на этом абзаце. Продолжите или перейдите дальше.</string>
+    <string name="docx_read_language">Голос: %1$s</string>
+    <string name="docx_read_rate">Скорость</string>
+    <string name="docx_read_rate_value">%1$s×</string>
+    <string name="docx_read_current">Сейчас читается: %1$s</string>
+    <string name="docx_read_hint">Используются только голоса на устройстве. Редактирование или уход со страницы останавливает чтение.</string>
 </resources>

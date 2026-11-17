@@ -1093,4 +1093,21 @@
     <string name="docx_spell_view">Mude para o Modo de edição para aplicar uma sugestão.</string>
     <string name="docx_spell_language">Idioma: %1$s</string>
     <string name="docx_spell_hint">Toque numa sugestão para substituir a palavra. Nada muda até o fazer.</string>
+    <string name="docx_read">Ler em voz alta</string>
+    <string name="docx_read_play">Reproduzir</string>
+    <string name="docx_read_pause">Pausar</string>
+    <string name="docx_read_resume">Retomar</string>
+    <string name="docx_read_stop">Parar</string>
+    <string name="docx_read_previous">Anterior</string>
+    <string name="docx_read_next">Seguinte</string>
+    <string name="docx_read_unavailable">Não há nenhuma voz de síntese offline instalada neste dispositivo.</string>
+    <string name="docx_read_idle">Não está a ser lido nada.</string>
+    <string name="docx_read_preparing">A preparar a voz offline…</string>
+    <string name="docx_read_playing">A ler em voz alta…</string>
+    <string name="docx_read_paused">Em pausa neste parágrafo. Retome ou avance.</string>
+    <string name="docx_read_language">Voz: %1$s</string>
+    <string name="docx_read_rate">Velocidade</string>
+    <string name="docx_read_rate_value">%1$s×</string>
+    <string name="docx_read_current">A ler agora: %1$s</string>
+    <string name="docx_read_hint">Apenas são usadas vozes do dispositivo. Editar ou sair da página para a leitura.</string>
 </resources>

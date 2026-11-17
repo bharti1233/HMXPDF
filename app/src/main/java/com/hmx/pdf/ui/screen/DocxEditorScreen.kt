@@ -111,6 +111,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.material.icons.rounded.Superscript
 import androidx.compose.material.icons.rounded.TextFields
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -202,6 +203,7 @@ import com.hmx.pdf.docx.XmlScan
 import com.hmx.pdf.docx.findPara
 import com.hmx.pdf.docx.forEachPara
 import com.hmx.pdf.docx.tableGridBefore
+import com.hmx.pdf.reading.ReadingSession
 import com.hmx.pdf.ui.components.rememberAdaptiveInk
 import com.hmx.pdf.ui.components.GlassBackButton
 import com.hmx.pdf.ui.components.GlassColorPicker
@@ -249,7 +251,7 @@ private val PaperCorner = 6.dp
 private val DeskGutter = 8.dp
 private val PageGap = 14.dp
 
-private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE, NOTES, SPELL }
+private enum class DocPanel { NONE, TEXT_COLOR, HIGHLIGHT, COMMENTS, REVISIONS, LAYOUT, HEADERS, TABLE, NOTES, SPELL, READ }
 
 /** Formatting chosen with nothing selected: it applies to what is typed next at [at]. */
 private class Pending(val paraId: Long, val at: Int, val fmt: CharFmt)
@@ -423,6 +425,8 @@ private class DocEnv(
     val currentHit: Pair<Long, IntRange>?,
     /** Paragraph id → misspelling ranges (display only, never part of the document). */
     val spell: Map<Long, List<IntRange>>,
+    /** Paragraph currently being read aloud (display only), null when not reading. */
+    val readingId: Long?,
     val accent: Color,
     /** Width between the page margins. */
     val textWidth: Dp,
@@ -491,6 +495,8 @@ private fun DocxEditorContent(
     val accent = LiquidGlassColors.Blue
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
+    // Navigation away (and disposal of the editor) always stops speech.
+    DisposableEffect(Unit) { onDispose { viewModel.stopReading() } }
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val uiSensor = rememberUISensor()
@@ -1024,6 +1030,7 @@ private fun DocxEditorContent(
                         hits = hitsByPara,
                         currentHit = matches.getOrNull(currentMatch),
                         spell = viewModel.spellRanges,
+                        readingId = viewModel.readingParaId,
                         accent = accent,
                         textWidth = pageW - marginL - marginR,
                         onChange = ::onChange,
@@ -1146,6 +1153,14 @@ private fun DocxEditorContent(
                             if (panel == DocPanel.SPELL) panel = DocPanel.NONE
                             else { panel = DocPanel.SPELL; viewModel.checkSpelling() }
                         },
+                        enabled = pkg != null,
+                        accent = accent
+                    )
+                    GlassToolButton(
+                        Icons.Rounded.VolumeUp,
+                        stringResource(R.string.docx_read),
+                        panel == DocPanel.READ,
+                        { panel = if (panel == DocPanel.READ) DocPanel.NONE else DocPanel.READ },
                         enabled = pkg != null,
                         accent = accent
                     )
@@ -2148,6 +2163,88 @@ private fun DocxEditorContent(
             }
         }
 
+        // Read Aloud (Phase 4.5): only an on-device voice is used. The script is a projection of
+        // the document, so reading never accepts a change or marks the file dirty. Every edit and
+        // navigation stops the session; pause keeps the chunk index because Android TTS has no
+        // real pause, and the highlight only follows text from the current generation.
+        if (panel == DocPanel.READ) {
+            val state = viewModel.readingState
+            val usable = viewModel.readingAvailable || viewModel.readingPreparing
+            val active = state == ReadingSession.State.PLAYING || state == ReadingSession.State.PAUSED
+            GlassDialog(
+                visible = true,
+                onDismiss = { panel = DocPanel.NONE },
+                backdrop = screenBackdrop.glass,
+                title = stringResource(R.string.docx_read)
+            ) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BasicText(
+                        when {
+                            state == ReadingSession.State.PLAYING -> stringResource(R.string.docx_read_playing)
+                            state == ReadingSession.State.PAUSED -> stringResource(R.string.docx_read_paused)
+                            viewModel.readingPreparing -> stringResource(R.string.docx_read_preparing)
+                            !usable -> stringResource(R.string.docx_read_unavailable)
+                            else -> stringResource(R.string.docx_read_idle)
+                        },
+                        style = TextStyle(sub, 12.sp, FontWeight.Medium)
+                    )
+                    viewModel.readingLanguage?.let {
+                        BasicText(
+                            stringResource(R.string.docx_read_language, it),
+                            style = TextStyle(sub, 11.sp)
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TableAction(stringResource(R.string.docx_read_previous), active) {
+                            viewModel.readAloudPreviousParagraph()
+                        }
+                        TableAction(
+                            when (state) {
+                                ReadingSession.State.PLAYING -> stringResource(R.string.docx_read_pause)
+                                ReadingSession.State.PAUSED -> stringResource(R.string.docx_read_resume)
+                                else -> stringResource(R.string.docx_read_play)
+                            },
+                            usable
+                        ) { viewModel.readAloudToggle() }
+                        TableAction(stringResource(R.string.docx_read_next), active) {
+                            viewModel.readAloudNextParagraph()
+                        }
+                        TableAction(
+                            stringResource(R.string.docx_read_stop),
+                            active || viewModel.readingPreparing
+                        ) { viewModel.stopReading() }
+                    }
+                    BasicText(
+                        stringResource(R.string.docx_read_rate),
+                        style = TextStyle(sub, 11.sp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (rate in listOf(0.75f, 1f, 1.25f, 1.5f)) {
+                            val label = if (rate == 1f) "1" else rate.toString().trimEnd('0').trimEnd('.')
+                            TableAction(
+                                stringResource(R.string.docx_read_rate_value, label),
+                                usable,
+                                selected = viewModel.readingRate == rate
+                            ) { viewModel.setReadingRate(rate) }
+                        }
+                    }
+                    viewModel.readingText?.let {
+                        BasicText(
+                            stringResource(R.string.docx_read_current, it),
+                            style = TextStyle(text, 13.sp)
+                        )
+                    }
+                    BasicText(
+                        stringResource(R.string.docx_read_hint),
+                        style = TextStyle(sub, 11.sp)
+                    )
+                }
+            }
+        }
+
         // Header/footer part editing: the referenced part's paragraphs as plain fields; the VM op
         // re-serializes through the same paragraph kernel the body uses, so rPr/objects survive.
         if (panel == DocPanel.HEADERS) {
@@ -2367,6 +2464,7 @@ private fun ParagraphBlock(
         Column(
             Modifier
                 .fillMaxWidth()
+                .then(if (env.readingId == para.id) Modifier.background(accent.copy(alpha = 0.16f)) else Modifier)
                 .padding(top = if (spaceTop) pl.before else 0.dp, bottom = if (spaceBottom) pl.after else 0.dp)
                 .then(if (pl.shading != null) Modifier.background(pl.shading) else Modifier)
                 .padding(start = pl.padStart, end = pl.padEnd)
@@ -2719,7 +2817,7 @@ private fun TableRowBlock(table: DocTable, row: DocRow, rowIndex: Int, look: Doc
 
 /** A compact action chip for the table panel (Phase 4.2). */
 @Composable
-private fun TableAction(label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun TableAction(label: String, enabled: Boolean, selected: Boolean = false, onClick: () -> Unit) {
     BasicText(
         label,
         style = TextStyle(
@@ -2729,7 +2827,7 @@ private fun TableAction(label: String, enabled: Boolean, onClick: () -> Unit) {
         ),
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = if (enabled) 0.10f else 0.04f))
+            .background(Color.White.copy(alpha = if (selected) 0.22f else if (enabled) 0.10f else 0.04f))
             .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 10.dp, vertical = 7.dp)
     )

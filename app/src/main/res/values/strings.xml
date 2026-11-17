@@ -1098,4 +1098,21 @@
     <string name="docx_spell_view">Switch to Edit Mode to apply a suggestion.</string>
     <string name="docx_spell_language">Language: %1$s</string>
     <string name="docx_spell_hint">Tap a suggestion to replace the word. Nothing changes until you do.</string>
+    <string name="docx_read">Read aloud</string>
+    <string name="docx_read_play">Play</string>
+    <string name="docx_read_pause">Pause</string>
+    <string name="docx_read_resume">Resume</string>
+    <string name="docx_read_stop">Stop</string>
+    <string name="docx_read_previous">Previous</string>
+    <string name="docx_read_next">Next</string>
+    <string name="docx_read_unavailable">No offline speech voice is installed on this device.</string>
+    <string name="docx_read_idle">Nothing is being read.</string>
+    <string name="docx_read_preparing">Preparing the offline voice…</string>
+    <string name="docx_read_playing">Reading aloud…</string>
+    <string name="docx_read_paused">Paused at this paragraph. Resume or move on.</string>
+    <string name="docx_read_language">Voice: %1$s</string>
+    <string name="docx_read_rate">Speed</string>
+    <string name="docx_read_rate_value">%1$s×</string>
+    <string name="docx_read_current">Now reading: %1$s</string>
+    <string name="docx_read_hint">Only on-device voices are used. Editing or leaving the page stops reading.</string>
 </resources>
