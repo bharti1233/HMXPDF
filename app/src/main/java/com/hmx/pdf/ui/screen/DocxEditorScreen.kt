@@ -2227,7 +2227,7 @@ private fun DocxEditorContent(
                             TableAction(
                                 stringResource(R.string.docx_read_rate_value, label),
                                 usable,
-                                selected = viewModel.readingRate == rate
+                                selected = viewModel.readingSpeed == rate
                             ) { viewModel.setReadingRate(rate) }
                         }
                     }

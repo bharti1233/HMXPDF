@@ -932,7 +932,7 @@ class DocxEditorViewModel : ViewModel() {
     /** True while the on-device voice is still initialising; the panel shows a short status line. */
     var readingPreparing by mutableStateOf(false)
         private set
-    var readingRate by mutableStateOf(1f)
+    var readingSpeed by mutableStateOf(1f)
         private set
     /** A play request that arrived before the engine finished initialising. */
     private var readingAutoPlay = false
@@ -974,7 +974,7 @@ class DocxEditorViewModel : ViewModel() {
 
     fun setReadingRate(rate: Float) {
         val clamped = rate.coerceIn(0.5f, 2f)
-        readingRate = clamped
+        readingSpeed = clamped
         readingSession?.setRate(clamped)
     }
 
@@ -1002,7 +1002,7 @@ class DocxEditorViewModel : ViewModel() {
             }
         )
         val session = ReadingSession(engine).also { it.onChange = { mirrorReading() } }
-        engine.rate = readingRate
+        engine.rate = readingSpeed
         readingEngine = engine
         readingSession = session
         readingPreparing = !engine.available
