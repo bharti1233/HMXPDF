@@ -48,9 +48,11 @@ class DocxNotesViewModelTest {
     @Test
     fun noteEditsRequireEditModeAndAreRefusedWhileTracking() {
         val view = vm()
+        view.setEditMode(false)
         assertNull(view.insertNote(DocxNotes.Kind.FOOTNOTE, null, "x"))
         assertFalse(view.deleteNote(DocxNotes.Kind.FOOTNOTE, 1))
 
+        view.setEditMode(true)
         val para = view.paragraph()
         val id = view.insertNote(DocxNotes.Kind.FOOTNOTE, para.id, "x")!!
         view.setTracking(true)
