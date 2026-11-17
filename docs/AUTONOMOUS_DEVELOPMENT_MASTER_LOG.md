@@ -1,6 +1,22 @@
 # HMXPDF autonomous development master log
 
-## Phase 4.3 implementation — 2026-11-17 (CI pending)
+## Phase 4.6 integration and final verification — 2026-11-17 (CI run 44124495265)
+
+Cross-feature integration is covered by `DocxPhase4IntegrationTest`: in one session it inserts a
+table and a row, adds a footnote (reference plus part element), applies an explicit spell
+suggestion, takes the single save capture, writes through `DocxWriter`, and reads the file back —
+table structure, both notes (the fixture's id 3 and the new one), the corrected paragraph and an
+unrelated `word/customXml` part all survive. Undo then unwinds the four operations newest-first and
+redo restores the same combined state, so undo and the checkpoint generation move together. A
+read-aloud pass over the edited document speaks every chunk and leaves the `DocState` instance and
+the dirty flag untouched. The final gate on `275c54a` is run 44124495265: build, release and
+release-guard all succeeded; debug APK 171,426,738 B, signed release APK set 134,876,344 B
+(universal APK 86,075,076 B), AAB 51,319,340 B. Device-only items (API 23/current, low RAM,
+no-GMS, offline voice installation, audio focus, force-stop recovery and external
+Word/LibreOffice reopen) remain unexecuted and are recorded in
+`docs/HMXPDF_FINAL_PROJECT_VERIFICATION_REPORT.md`. Per instruction, `main` is not pushed.
+
+## Phase 4.3 implementation — 2026-11-17 (CI run 44120403325; final 44124495265)
 
 Spell checking runs entirely offline through `AndroidSpellEngine`, a `SpellCheckerSession` adapter
 over the installed Android text service; it never opens a network connection. The adapter refuses
@@ -18,10 +34,12 @@ with the same Track Changes capture as every other edit (single undo step). The 
 (7 locales) lists words and suggestions, exposes running/unavailable/no-issues states and a
 re-check action. JVM tests cover token rules, cross-run words, bounded cache, chunking, cooperative
 cancellation, editable-only scanning, stale refusal, formatting/comment preservation, tracked
-replacement, view-mode gating and ignore. No local Android build; CI verification is pending. Per
-instruction, `main` is not pushed.
+replacement, view-mode gating and ignore. No local Android build. Verified in run 44120403325 on `4ded969` and
+re-verified with the 4.6 suite in run 44124495265 on `275c54a`: build, release and release-guard
+all succeeded (375 JVM tests, 0 failed, 42 pre-existing skips). Per instruction, `main` is not
+pushed.
 
-## Phase 4.4 implementation — 2026-11-17 (CI pending)
+## Phase 4.4 implementation — 2026-11-17 (CI run 44057796676; re-verified 44124495265)
 
 Footnotes and endnotes: `DocxNotes` parses `word/footnotes.xml` / `word/endnotes.xml` into
 immutable note snapshots (kind, id, separator flag, paragraph blocks, original element span) and
@@ -37,9 +55,11 @@ save capture and recovery. The Notes panel (7 locales) lists notes, inserts foot
 the focused paragraph, edits their paragraph text and removes them. JVM tests cover separator
 preservation, id allocation, comment/note isolation, writer round trips (existing and created
 parts, relationship and content-type entries), VM gating, undo/redo and the save capture. No local
-Android build; CI verification is pending. Per instruction, `main` is not pushed.
+Android build. First verified in run 44057796676 on `890d076`; re-verified together with 4.3/4.5/4.6
+in run 44124495265 on `275c54a` (all jobs success, 375 JVM tests, 0 failed, 42 pre-existing skips).
+Per instruction, `main` is not pushed.
 
-## Phase 4.5 implementation — 2026-11-17 (CI pending)
+## Phase 4.5 implementation — 2026-11-17 (CI run 44120403325; final 44124495265)
 
 Read Aloud is a read-only projection. `ReadingProjection` walks the document through `forEachPara`
 (body text, table cells and list items in reading order), strips object runs, excludes pending
@@ -57,7 +77,9 @@ previous/next, rate chips and the current chunk. Reading never edits, accepts a 
 the file or marks a checkpoint: the highlight is a display-only `readingId`, and every edit, undo,
 document load or editor close calls `stopReading`, so a stale paragraph id can never be highlighted.
 JVM tests cover projection order/policy/chunk bounds and the full session state machine with a fake
-engine. No local Android build; CI verification is pending. Per instruction, `main` is not pushed.
+engine. No local Android build. Verified in run 44120403325 on `4ded969`; final gate with 4.6 in
+run 44124495265 on `275c54a` (all jobs success, 375 JVM tests, 0 failed, 42 pre-existing skips). Per
+instruction, `main` is not pushed.
 
 ## Phase 4.2 complete — 2026-11-17 (CI run 44050687595)
 
