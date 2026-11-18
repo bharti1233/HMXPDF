@@ -30,10 +30,13 @@ here does not match what you see in the repository, please open an issue.
 
 ### Branching model
 
-- `release/hmxpdf-2.1.1-build` is the **default branch** and the integration
-  branch. Open pull requests against it.
-- `main` exists as a mirror and may lag behind the integration branch. Do not
-  assume it is current.
+- `release/hmxpdf-2.1.1-build` is the **primary development branch**, the GitHub
+  default branch, and the integration branch. Open pull requests against it.
+- `main` is a **backup snapshot only**. It is not a development branch, it is not
+  updated automatically, and it is fast-forwarded only when a maintainer
+  explicitly requests a backup update. Do not open pull requests against it.
+- The complete policy, pre-task checklist, and backup procedure are in
+  [docs/BRANCHING.md](docs/BRANCHING.md).
 - Create a short-lived topic branch from the integration branch, for example:
 
   ```bash

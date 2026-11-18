@@ -1,6 +1,6 @@
-# ClearPDF — Roadmap
+# HMXPDF — Roadmap
 
-A living plan for turning ClearPDF into a full, Adobe-class **PDF editor** that stays
+A living plan for turning HMXPDF into a full, Adobe-class **PDF editor** that stays
 **100% offline & privacy-first**. No cloud, no accounts, no LLM/network AI — on-device
 Google ML Kit is used **only** for the document scanner and on-device OCR text selection.
 
@@ -59,7 +59,7 @@ Legend: ✅ done · 🚧 in progress · ⏳ planned · 💡 idea / stretch
 - ⏳ **Password protect / encrypt** + **remove password** (PdfBox `StandardProtectionPolicy`)
 - ⏳ **Flatten** (bake annotations/forms) for safe sharing
 - ⏳ **Redaction** tool (truly remove content under a box, not just cover it)
-- ⏳ **Share sheet** integration everywhere + "Open with ClearPDF" as default PDF handler
+- ⏳ **Share sheet** integration everywhere + "Open with HMXPDF" as default PDF handler
 - ⏳ **Print** support (Android print framework)
 - ⏳ **Metadata editor** (title/author/keywords) and metadata stripping for privacy
 

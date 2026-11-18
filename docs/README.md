@@ -13,6 +13,8 @@ evidence in this folder.
 | [CODE_OF_CONDUCT](../CODE_OF_CONDUCT.md) | Contributor Covenant 2.1 |
 | [PRIVACY](../PRIVACY.md) | Data flows, network use, permissions |
 | [CHANGELOG](../CHANGELOG.md) | Development history derived from Git |
+| [BRANCHING](BRANCHING.md) | Primary/backup branch policy and backup synchronization procedure |
+| [BRANDING_AUDIT](BRANDING_AUDIT.md) | Remaining old-branding audit and asset replacements |
 | [DOCUMENTATION_AUDIT](DOCUMENTATION_AUDIT.md) | What was wrong in the docs and what changed |
 | [LICENSING_AUDIT](LICENSING_AUDIT.md) | Licensing evidence and decision |
 | [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md) | Component licenses and attribution |

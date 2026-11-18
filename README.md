@@ -282,7 +282,9 @@ Bug reports, documentation fixes, and focused pull requests are welcome.
 ## Project status and history
 
 - **Version:** 2.1.1 (`versionCode` 6), package `com.hmx.pdf`.
-- **Default branch:** `release/hmxpdf-2.1.1-build`.
+- **Primary development branch:** `release/hmxpdf-2.1.1-build` (GitHub default).
+- **Backup branch:** `main` — a snapshot updated only on explicit request, never
+  used for development. See [docs/BRANCHING.md](docs/BRANCHING.md).
 - **Continuous integration:** Android build workflow, currently green on the
   default branch.
 - **Releases:** none published yet.

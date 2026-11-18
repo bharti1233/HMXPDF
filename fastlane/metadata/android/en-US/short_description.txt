@@ -1,1 +1,1 @@
-Open-source PDF reader and editor: edit text, fill forms, sign, scan, convert
+Open-source PDF and DOCX editor: annotate, sign, scan, convert, on device

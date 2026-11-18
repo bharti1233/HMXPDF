@@ -141,6 +141,10 @@ was not verified in source, build files, or existing reports.
 
 ## 6. Remaining recommendations (not applied)
 
+> **Follow-up (2026-11-18):** recommendation 1 was completed in
+> [BRANDING_AUDIT.md](BRANDING_AUDIT.md); the branded screenshots, banner, social
+> preview, and the ClearPDF onboarding video were replaced or removed.
+
 1. Remove or regenerate the ClearPDF-branded `screenshots/banner_gh.png`,
    `screenshots/social_preview_1280x640.png`, `screenshots/*.jpg`, and `demo/`
    media once replacement captures exist.
