@@ -6,7 +6,7 @@
     <title>Download — HMXPDF</title>
     <meta
       name="description"
-      content="Download the official HMXPDF APK from GitHub Releases. This page reads the public release feed and shows the verified version, date, APK assets, changelog, and SHA-256 when available."
+      content="Find the official HMXPDF Android release on GitHub. View the release date, notes, APK ZIP size, and SHA-256 checksum."
     />
     <meta
       name="keywords"
@@ -107,9 +107,13 @@
             Download HMXPDF <span class="gradient-text">from GitHub Releases.</span>
           </h1>
           <p class="hero-rise hero-rise-delay mt-6 max-w-2xl text-base leading-relaxed text-mist sm:text-lg">
-            This page reads the official repository's public release feed. Release names, dates, APK
-            links, and checksums come from GitHub — never from this website.
+             Get the signed Android APKs in one ZIP from the official GitHub release.
           </p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <button class="btn-secondary btn-sm" id="download-apk-button" type="button" disabled aria-describedby="direct-download-status">Download APK</button>
+            <a class="btn-primary btn-sm" id="download-github-button" href="https://github.com/bharti1233/HMXPDF/releases">Download from GitHub</a>
+          </div>
+          <p id="direct-download-status" class="mt-3 text-sm text-mist-dim">Direct APK download is coming soon.</p>
         </div>
       </section>
 
@@ -150,17 +154,17 @@
                   <h2 class="text-2xl font-bold tracking-tight text-white">Release details need JavaScript</h2>
                   <p class="mt-3 max-w-2xl text-sm leading-relaxed text-mist">
                     This panel reads the public GitHub release feed in your browser. Open the
-                    official releases page to see what is published and download an APK there.
+                    official releases page to see what is published and download the APK ZIP there.
                   </p>
                   <div class="mt-5">
-                    <a class="btn-primary btn-sm" href="https://github.com/bharti1233/Hmxpdf/releases">Open GitHub Releases</a>
+                    <a class="btn-primary btn-sm" href="https://github.com/bharti1233/HMXPDF/releases">Open GitHub Releases</a>
                   </div>
                 </div>
               </div>
             </div>
           </noscript>
 
-          <!-- No release / no APK -->
+          <!-- No Android release asset -->
           <div id="release-empty" hidden>
             <div class="flex flex-col items-start gap-5 sm:flex-row">
               <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-accent-light">
@@ -180,7 +184,7 @@
                   <a
                     id="release-empty-link"
                     class="btn-primary btn-sm"
-                    href="https://github.com/bharti1233/Hmxpdf/releases"
+                    href="https://github.com/bharti1233/HMXPDF/releases"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -211,7 +215,7 @@
                   for you here.
                 </p>
                 <div class="mt-5 flex flex-wrap gap-3">
-                  <a class="btn-primary btn-sm" href="https://github.com/bharti1233/Hmxpdf/releases" target="_blank" rel="noopener noreferrer">
+                  <a class="btn-primary btn-sm" href="https://github.com/bharti1233/HMXPDF/releases" target="_blank" rel="noopener noreferrer">
                     Check GitHub Releases
                   </a>
                   <a class="btn-secondary btn-sm" href="download.html">Reload page</a>
@@ -230,13 +234,13 @@
                 <p class="mt-2 text-sm text-mist-dim">
                   <time id="release-date">—</time>
                   <span aria-hidden="true"> · </span>
-                  Android APK
+                  Android release
                 </p>
               </div>
               <a
                 id="release-page-link"
                 class="btn-secondary btn-sm"
-                href="https://github.com/bharti1233/Hmxpdf/releases"
+                href="https://github.com/bharti1233/HMXPDF/releases"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -245,10 +249,9 @@
             </div>
 
             <div class="mt-8">
-              <h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-mist-dim">APK downloads</h3>
+              <h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-mist-dim">Android release assets</h3>
               <p class="mt-2 text-sm leading-relaxed text-mist">
-                APK files install directly on Android. If the release includes several APKs, choose
-                the one that matches your device architecture.
+                Download the ZIP on GitHub, extract it, and choose the APK that matches your device.
               </p>
               <ul id="release-apk-list" class="mt-4 space-y-3"></ul>
             </div>
@@ -270,8 +273,7 @@
             </div>
 
             <p class="mt-6 text-xs leading-relaxed text-mist-dim">
-              Release data is provided by the public GitHub API. The APK itself is downloaded from
-              GitHub, not from this website.
+              Release details come from the public GitHub API. Download the ZIP from the release page.
             </p>
           </div>
         </div>
@@ -284,21 +286,21 @@
             <p class="eyebrow">Verify the file</p>
             <h2 class="mt-3 text-xl font-bold text-white sm:text-2xl">Check the SHA-256 yourself</h2>
             <p class="mt-3 text-sm leading-relaxed text-mist">
-              When GitHub provides an asset digest, this page displays it next to the APK. Compare it
-              with a hash you compute locally after downloading.
+              Compare GitHub’s published SHA-256 with the hash you compute locally after downloading.
+              Replace <code>archive.zip</code> with the downloaded filename in these commands.
             </p>
             <div class="mt-5 space-y-4">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.14em] text-mist-dim">Windows PowerShell</p>
-                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>Get-FileHash .\HMXPDF.apk -Algorithm SHA256</code></pre>
+                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>Get-FileHash .\archive.zip -Algorithm SHA256</code></pre>
               </div>
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.14em] text-mist-dim">macOS</p>
-                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>shasum -a 256 HMXPDF.apk</code></pre>
+                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>shasum -a 256 archive.zip</code></pre>
               </div>
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.14em] text-mist-dim">Linux</p>
-                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>sha256sum HMXPDF.apk</code></pre>
+                <pre class="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-night-900 p-3 text-xs text-accent-soft"><code>sha256sum archive.zip</code></pre>
               </div>
             </div>
             <p class="mt-4 text-xs leading-relaxed text-mist-dim">
@@ -313,7 +315,7 @@
             <ol class="mt-4 space-y-3 text-sm leading-relaxed text-mist">
               <li class="flex gap-3">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent-soft">1</span>
-                <span>Open the official releases page and download an <strong class="text-white">.apk</strong> file — not an .aab.</span>
+                <span>Download the APK ZIP from GitHub. Verify its SHA-256, then extract it.</span>
               </li>
               <li class="flex gap-3">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent-soft">2</span>
@@ -321,11 +323,11 @@
               </li>
               <li class="flex gap-3">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent-soft">3</span>
-                <span>Open the downloaded APK and confirm the install. Future updates use the same app identity.</span>
+                <span>Open the extracted APK for your device and confirm the install. Use the universal APK if unsure.</span>
               </li>
               <li class="flex gap-3">
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent-soft">4</span>
-                <span>Optionally verify the SHA-256 before installing. Keep a copy of the published hash.</span>
+                <span>Turn off the install-unknown-apps permission again if you enabled it.</span>
               </li>
             </ol>
             <div class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
@@ -430,13 +432,13 @@
               <li><a class="footer-link" href="privacy.html">Privacy Policy</a></li>
               <li><a class="footer-link" href="about.html">About</a></li>
               <li>
-                <a class="footer-link" href="https://github.com/bharti1233/Hmxpdf" target="_blank" rel="noopener noreferrer">Source code</a>
+                <a class="footer-link" href="https://github.com/bharti1233/HMXPDF" target="_blank" rel="noopener noreferrer">Source code</a>
               </li>
               <li>
-                <a class="footer-link" href="https://github.com/bharti1233/Hmxpdf/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+                <a class="footer-link" href="https://github.com/bharti1233/HMXPDF/releases" target="_blank" rel="noopener noreferrer">Releases</a>
               </li>
               <li>
-                <a class="footer-link" href="https://github.com/bharti1233/Hmxpdf/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
+                <a class="footer-link" href="https://github.com/bharti1233/HMXPDF/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
               </li>
             </ul>
           </div>

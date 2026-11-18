@@ -467,7 +467,7 @@ def main() -> int:
 
     # Confirm the release loader has the documented no-release fallback.
     release_js = (ROOT / "assets/js/release.js").read_text(encoding="utf-8")
-    for needle in ("No public APK release yet", "No installable APK in the latest release", "api.github.com/repos/bharti1233/Hmxpdf"):
+    for needle in ("No public APK release yet", "No installable APK in the latest release", "api.github.com/repos/bharti1233/HMXPDF"):
         if needle not in release_js:
             fail(f"release.js: missing expected fallback marker: {needle}")
     else:

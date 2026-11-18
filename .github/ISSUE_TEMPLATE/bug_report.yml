@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve HMXPDF. HMXPDF has no published APK release yet —
-        please state the commit or build you used. Remove private document content,
+        Thanks for helping improve HMXPDF. Please state the release version or commit
+        you used. Remove private document content,
         personal data, access tokens, and file paths from screenshots or logs.
   - type: input
     id: version

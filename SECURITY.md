@@ -2,15 +2,14 @@
 
 ## Supported versions
 
-HMXPDF has **no published APK release yet**. Security fixes are developed on the
-default branch, `release/hmxpdf-2.1.1-build`, and will be included in the next
-public build. Builds produced locally or downloaded as CI artifacts are
-development snapshots and are not supported distributions.
+Security fixes are developed on the default branch, `release/hmxpdf-2.1.1-build`.
+Report issues affecting the official GitHub release or current development branch.
+Local builds and CI debug artifacts are development snapshots.
 
 | Version | Supported |
 |---|---|
 | `release/hmxpdf-2.1.1-build` (development) | Fixes accepted |
-| Published releases | None published yet |
+| [v2.1.1](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1) | Reports accepted |
 | Locally built or CI debug APKs | Not supported |
 
 ## Report a vulnerability privately

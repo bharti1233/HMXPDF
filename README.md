@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="hmxwebsite/assets/img/icon-192.png" alt="HMXPDF logo" width="112" />
+
 # HMXPDF
 
 **An open-source PDF and DOCX document toolkit for Android.**
@@ -22,10 +24,11 @@ Jetpack Compose.
 
 </div>
 
-> **Release status: No public APK release yet.** HMXPDF **2.1.1** is under active
-> development; GitHub Releases is empty and no tags exist. Build from source
-> (below) or download the debug APK artifact from a successful CI run. Do not
-> treat a locally built, debug-signed APK as an official distribution.
+> **Release status: HMXPDF v2.1.1 is published.** The official Android release
+> is available on [GitHub Releases](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1)
+> as a single ZIP containing all five signed APK variants. The website's
+> [download page](https://hmxpdf-website.vercel.app/download) reads the release
+> feed and shows the version, date, asset size, and SHA-256.
 
 ## Overview
 
@@ -185,13 +188,31 @@ Hmxpdf/
 
 ## Installation
 
-### From source (current method)
+### Official release (recommended)
 
-There is no published APK yet. Build a debug APK and install it with ADB:
+Download **HMXPDF-v2.1.1-Android-APKs.zip** from the
+[GitHub release](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1). The
+ZIP contains all five signed APK variants and a `README.txt` that explains which
+one matches your device.
+
+- ZIP SHA-256: `18ed388d55426626fc7f02f90f883d8d9426a61fb2742c43fa02925016c34e5e`
+- Built from commit `1a069bbb0b68268de33e4da834dffd7e7cd6d7dc` by GitHub Actions
+  run `44343854184` (success).
+- Signed with the release certificate; not debug-signed.
+
+Most modern phones use `app-play-arm64-v8a-release.apk`. If you are unsure which
+ABI your device needs, use `app-play-universal-release.apk`.
+
+The published APKs retain the launcher icon from the tagged build. The new
+launcher icons are in the development branch.
+
+### From source
+
+Build a debug APK and install it with ADB:
 
 ```bash
 git clone https://github.com/bharti1233/HMXPDF.git
-cd Hmxpdf
+cd HMXPDF
 ./gradlew :app:assemblePlayDebug
 adb install -r app/build/outputs/apk/play/debug/app-play-universal-debug.apk
 ```
@@ -214,11 +235,11 @@ are debug-signed — they are for testing only.
 
 ### APK downloads
 
-GitHub Releases is empty, so there is nothing to download from this repository
-yet. The official status is always visible on the
-[download page](https://hmxpdf-website.vercel.app/download), which reads the
-repository's releases API directly. When a release is published it will appear
-there automatically.
+The official APK ZIP is attached to the
+[v2.1.1 GitHub Release](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1),
+together with a `.sha256` checksum file. The
+[download page](https://hmxpdf-website.vercel.app/download) reads the repository's
+releases API and shows the same release information.
 
 ## Build instructions
 
@@ -287,7 +308,8 @@ Bug reports, documentation fixes, and focused pull requests are welcome.
   used for development. See [docs/BRANCHING.md](docs/BRANCHING.md).
 - **Continuous integration:** Android build workflow, currently green on the
   default branch.
-- **Releases:** none published yet.
+- **Releases:** [v2.1.1](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1)
+  published (tag `v2.1.1`, target `1a069bb`).
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md), derived from the repository's Git
   history.
 - **Documentation audit:** [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md).
@@ -324,6 +346,7 @@ their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 - Website: <https://hmxpdf-website.vercel.app>
 - Repository: <https://github.com/bharti1233/HMXPDF>
+- Releases: <https://github.com/bharti1233/HMXPDF/releases>
 - Issues: <https://github.com/bharti1233/HMXPDF/issues>
 - Privacy: [PRIVACY.md](PRIVACY.md)
 - Security: [SECURITY.md](SECURITY.md)

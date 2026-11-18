@@ -7,8 +7,8 @@
 (function () {
   'use strict';
 
-  var API_URL = 'https://api.github.com/repos/bharti1233/Hmxpdf/releases/latest';
-  var RELEASES_URL = 'https://github.com/bharti1233/Hmxpdf/releases';
+  var API_URL = 'https://api.github.com/repos/bharti1233/HMXPDF/releases/latest';
+  var RELEASES_URL = 'https://github.com/bharti1233/HMXPDF/releases';
 
   var panel = document.getElementById('release-panel');
   var chip = document.getElementById('home-release-status');
@@ -33,7 +33,7 @@
     var kb = bytes / 1024;
     if (kb < 1024) return kb.toFixed(kb < 10 ? 1 : 0) + ' KB';
     var mb = kb / 1024;
-    return mb.toFixed(mb < 10 ? 1 : 0) + ' MB';
+    return mb.toFixed(1) + ' MiB';
   }
 
   function parseDate(value) {
@@ -95,16 +95,6 @@
   function showError() {
     setDownloadState('error');
     setChip('Release status unavailable — check GitHub');
-  }
-
-  function makeExternalLink(href, label, className) {
-    var link = document.createElement('a');
-    link.href = href;
-    link.className = className;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = label;
-    return link;
   }
 
   function copyText(value, button) {
@@ -212,28 +202,16 @@
     meta.textContent = kind + (size ? ' · ' + size : '');
     info.appendChild(meta);
 
-    if (kind === 'APK') {
+    if (kind !== 'AAB') {
       info.appendChild(shaBlock(asset));
     }
 
     item.appendChild(info);
 
-    var url = safeHttpsUrl(asset.browser_download_url);
-    if (url) {
-      var link = makeExternalLink(
-        url,
-        kind === 'APK' ? 'Download APK' : 'Download AAB',
-        kind === 'APK'
-          ? 'btn-primary btn-sm shrink-0 self-start'
-          : 'btn-secondary btn-sm shrink-0 self-start'
-      );
-      item.appendChild(link);
-    }
-
     return item;
   }
 
-  function renderRelease(release, apks, aabs) {
+  function renderRelease(release, packages, aabs) {
     setDownloadState('content');
 
     var tag = tagLabel(release);
@@ -269,8 +247,8 @@
     var apkList = $('release-apk-list');
     if (apkList) {
       apkList.textContent = '';
-      apks.forEach(function (asset) {
-        apkList.appendChild(assetRow(asset, 'APK'));
+      packages.forEach(function (asset) {
+        apkList.appendChild(assetRow(asset, /\.zip$/i.test(asset.name) ? 'APK ZIP' : 'APK'));
       });
     }
 
@@ -304,28 +282,29 @@
     }
 
     var assets = Array.isArray(release.assets) ? release.assets : [];
-    var apks = assets.filter(function (asset) {
-      return /\.apk$/i.test(asset.name || '');
+    var packages = assets.filter(function (asset) {
+      return asset && asset.state === 'uploaded' && asset.size > 0 &&
+        (/\.apk$/i.test(asset.name || '') || /^HMXPDF-v[\w.-]+-Android-APKs\.zip$/i.test(asset.name || ''));
     });
     var aabs = assets.filter(function (asset) {
       return /\.aab$/i.test(asset.name || '');
     });
 
-    if (!apks.length) {
+    if (!packages.length) {
       var date = releaseTimestamp(release);
       showEmpty(
         'No installable APK in the latest release',
         'GitHub lists ' +
           tagLabel(release) +
           (date ? ' (published ' + formatDate(date) + ')' : '') +
-          ', but that release has no .apk asset. Open the release page to see everything that was published.',
+          ', but that release has no APK or HMXPDF APK ZIP. Open the release page to see its assets.',
         safeHttpsUrl(release.html_url) || RELEASES_URL
       );
       setChip('Latest release has no APK asset yet');
       return;
     }
 
-    renderRelease(release, apks, aabs);
+    renderRelease(release, packages, aabs);
   }
 
   var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
