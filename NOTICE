@@ -1,3 +1,17 @@
+HMXPDF NOTICE
+
+HMXPDF is derived from ClearPDF by Chethan616
+(https://github.com/Chethan616/ClearPDF), obtained through the HMXPDF
+distribution at https://github.com/HMXPANEL/HMXPDF. The original ClearPDF
+copyright notice in LICENSE and the notice below are preserved unchanged. The
+upstream project is itself built on PdfCraft for Android by the ArtCraft Team and
+the PdfCraft engine by storytold and contributors.
+
+The derived work keeps the MIT terms recorded in LICENSE. Third-party components
+listed below remain under their own licenses.
+
+---------------------------------------------------------------------------
+
 ClearPDF NOTICE
 
 This project includes and adapts components from AndroidLiquidGlass by kyant0.

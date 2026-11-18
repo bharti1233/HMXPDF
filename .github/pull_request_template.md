@@ -10,7 +10,9 @@ Closes #
 
 ## How was it checked?
 
-- [ ] <code>./gradlew :app:assembleFossDebug</code>
+- [ ] `./gradlew testPlayDebugUnitTest :pdf-core:test :ocr-core:test`
+- [ ] `./gradlew lintPlayDebug`
+- [ ] `./gradlew :app:assemblePlayDebug`
 - [ ] Relevant manual checks completed
 - Device / Android version:
 - Known limitations:
@@ -21,8 +23,10 @@ Closes #
 
 ## Checklist
 
-- [ ] Selected documents remain local; any new network behavior is explicit and documented.
+- [ ] Selected documents remain local; any new network behavior is explicit and documented in PRIVACY.md.
 - [ ] Existing offline workflows remain usable where intended.
 - [ ] Light and dark themes, accessibility, and performance were considered.
-- [ ] Documentation and third-party notices were updated where needed.
+- [ ] Tests were added or updated for logic changes.
+- [ ] Documentation was updated where behavior, requirements, or dependencies changed.
+- [ ] Third-party notices and attribution were updated where needed.
 - [ ] No secrets, private documents, APKs, keystores, or build outputs are included.

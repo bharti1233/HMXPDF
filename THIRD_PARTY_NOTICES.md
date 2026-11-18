@@ -1,13 +1,18 @@
 # Third-party notices
 
-ClearPDF uses open-source components and keeps their notices with the project. Release packaging must preserve the applicable copyright and license text.
+HMXPDF uses open-source components and keeps their notices with the project.
+Release packaging must preserve the applicable copyright and license text.
+
+HMXPDF is derived from ClearPDF by Chethan616 (MIT). Some inherited source files
+still carry a "Modified by ClearPDF" header written by the upstream project; those
+markers are historical modification records and are intentionally preserved.
 
 ## Apache PDFBox Android
 
 - Artifact: `com.tom-roush:pdfbox-android:2.0.27.0`
 - License: Apache License 2.0
 - Use: PDF parsing, editing, merging, splitting, and password removal.
-- Notice practice: keep the Apache 2.0 license and upstream attribution available with redistributed builds. Do not imply that the Apache Software Foundation endorses ClearPDF.
+- Notice practice: keep the Apache 2.0 license and upstream attribution available with redistributed builds. Do not imply that the Apache Software Foundation endorses HMXPDF.
 
 ## Carlito font
 
@@ -41,7 +46,7 @@ ClearPDF uses open-source components and keeps their notices with the project. R
 - Artifact: `com.google.mlkit:text-recognition:16.0.1`
 - License: Google APIs Terms of Service (proprietary; the client library, not the on-device model, carries Apache-2.0-style redistribution terms — see Google's ML Kit terms)
 - Use: primary on-device OCR engine for scanned/image-only PDF pages (`ocr-core` module). This is the **bundled** artifact — the recognition model ships inside the APK, not the Play-Services-downloaded variant — so it runs fully offline with no network call and no Play Services requirement.
-- Notice practice: comply with Google's ML Kit Terms of Service for redistribution; do not imply Google endorses ClearPDF.
+- Notice practice: comply with Google's ML Kit Terms of Service for redistribution; do not imply Google endorses HMXPDF.
 
 ## Tesseract4Android / Tesseract OCR / Leptonica
 
@@ -54,7 +59,7 @@ ClearPDF uses open-source components and keeps their notices with the project. R
 
 - Project: `Karna14314/Pdf_Tools` (https://github.com/Karna14314/Pdf_Tools)
 - License: Apache License 2.0
-- Use: informed ClearPDF's on-device tool set (e.g. PDF-to-Images export). ClearPDF's implementations are original code written against the app's own architecture and `backdrop` UI; no source was copied. This acknowledgement is provided in good faith for the shared feature direction.
+- Use: informed HMXPDF's on-device tool set (e.g. PDF-to-Images export). HMXPDF's implementations are original code written against the app's own architecture and `backdrop` UI; no source was copied. This acknowledgement is provided in good faith for the shared feature direction.
 
 The app does not bundle GPL or LGPL components for document rendering. If a future dependency changes that, its license and redistribution obligations must be reviewed before release. (The optional LibreOffice engine below is not bundled in the APK; it is installed only on request.)
 
@@ -127,10 +132,10 @@ The app does not bundle GPL or LGPL components for document rendering. If a futu
 - Source availability (MPL-2.0 §3.2): the corresponding LibreOffice source is available from the
   URLs above. Anyone redistributing a build that bundles or rehosts the engine must keep that source
   available and should prefer a self-built bundle whose build recipe is published.
-- ClearPDF's Kotlin JNI binding (`app/src/main/java/org/libreoffice/kit/`) is original code; only
+- The Kotlin JNI binding inherited from ClearPDF (`app/src/main/java/org/libreoffice/kit/`) is original upstream code; only
   its package, class and method names follow LibreOffice's Android binding, because the native
   library resolves them by name.
-- Trademark: "LibreOffice" is a trademark of The Document Foundation; ClearPDF uses it only to say
+- Trademark: "LibreOffice" is a trademark of The Document Foundation; HMXPDF uses it only to say
   the optional engine is powered by LibreOffice and is not affiliated with or endorsed by TDF.
 - Credited in Settings → Licenses and Settings → Office engine.
 
@@ -141,7 +146,7 @@ The app does not bundle GPL or LGPL components for document rendering. If a futu
   (invert + 180 degree hue turn) and the "looks like paper" picture probe with its thresholds, so dark
   reading leaves photographs as printed (PDF viewer, slides, Word editor). Also the idea of showing
   a Word file in the pages Word recorded (`w:lastRenderedPageBreak`), printing through Android's
-  print screen, and reopening a document at the page last read. ClearPDF's code and UI are its own.
+  print screen, and reopening a document at the page last read. HMXPDF's code and UI are its own.
 - Licence text:
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of this software and

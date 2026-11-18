@@ -1,28 +1,30 @@
 name: Bug report
-description: Report a reproducible problem in ClearPDF.
+description: Report a reproducible problem in HMXPDF.
 title: "[Bug]: "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve ClearPDF. Please remove private document content, personal data, and access tokens from screenshots or logs.
+        Thanks for helping improve HMXPDF. HMXPDF has no published APK release yet —
+        please state the commit or build you used. Remove private document content,
+        personal data, access tokens, and file paths from screenshots or logs.
   - type: input
     id: version
     attributes:
-      label: ClearPDF version
-      description: Find this in Settings → About, or on the release page.
-      placeholder: "2.0.0 (V4)"
+      label: HMXPDF version
+      description: Find this in Settings → About (for example, "2.1.1"). Include the commit if you built from source.
+      placeholder: "2.1.1 (commit abc1234)"
     validations:
       required: true
   - type: dropdown
     id: distribution
     attributes:
-      label: Where did you install ClearPDF from?
+      label: How did you install HMXPDF?
       options:
-        - GitHub release APK
-        - Google Play
         - Built from source
+        - CI debug APK artifact
+        - Google Play
         - Other / not sure
     validations:
       required: true
