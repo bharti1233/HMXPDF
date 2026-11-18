@@ -21,12 +21,12 @@ Network access is limited to features that need it:
   Play services. Background removal uses ML Kit subject segmentation, whose model
   may be delivered by Google Play services. Google manages those service and model
   downloads; document processing remains on-device.
-- **Play distribution.** The optional Office engine is delivered through Google
-  Play's on-demand feature delivery when requested. The app's main manifest does
-  not declare the `INTERNET` permission; the FOSS flavor adds it for the two
-  user-initiated features above, and bundled libraries may contribute permissions
-  during manifest merging. See [NOTICE](NOTICE) and the dependency manifests for
-  details.
+- **Application manifests.** The main manifest does not declare the `INTERNET`
+  permission; the FOSS flavor adds it for the two user-initiated features above,
+  and bundled libraries may contribute permissions during manifest merging. The
+  optional Office engine is downloaded by the app in the `play` and `foss` builds;
+  the `fdroid` build does not offer it. See [NOTICE](NOTICE) and the dependency
+  manifests for details.
 
 Converting local HTML, rendering DOCX content, OCR, spreadsheet editing, image
 tools, and PDF operations use local content. The WebViews used for local HTML and

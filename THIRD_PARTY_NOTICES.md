@@ -121,9 +121,11 @@ The app does not bundle GPL or LGPL components for document rendering. If a futu
 
 - What: "Office engine (powered by LibreOffice)" — a prebuilt LibreOfficeKit bundle for Android
   (`liblo-native-code.so`, `libc++_shared.so` and the LibreOffice runtime tree). It is **not in the
-  APK**. It is installed only when the user asks for it in Settings: the `play` flavor gets it through
-  the on-demand Play Feature Delivery module `:office_engine`, and the `foss` flavor downloads it from
-  a pinned release, accepting it only if its size and SHA-256 match `OfficeEngineManifest.kt`.
+  APK**. It is installed only when the user asks for it in Settings. The `play` and `foss` builds
+  install it through the app's own downloader, which accepts the pinned release only if its size and
+  SHA-256 match `OfficeEngineManifest.kt`; the `office_engine` module can carry the binaries for a
+  Play bundle, but the app does not currently request them through Play Feature Delivery. The
+  `fdroid` build does not offer the engine at all.
 - Binary source: https://github.com/vasuki-re/LibreOffice-Lite (release v2.0), a build of
   LibreOffice core (https://git.libreoffice.org/core, mirror https://github.com/LibreOffice/core).
 - License: Mozilla Public License 2.0 for LibreOffice itself; some bundled parts (fonts such as

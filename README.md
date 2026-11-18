@@ -166,7 +166,7 @@ Hmxpdf/
 ├── pdf-core/       PDF rendering, page operations, text, security, forms
 ├── ocr-core/       On-device OCR engines and PDF text stamping
 ├── backdrop/       Shared liquid-glass surface and motion components
-├── office_engine/  Optional Play Feature Delivery module (bundle builds)
+├── office_engine/  Optional LibreOffice binaries for Play bundle builds
 ├── docs/           Engineering audits, phase reports, and this documentation
 ├── fastlane/       Store metadata
 └── hmxwebsite/     Official static website (deployed on Vercel)
@@ -178,8 +178,10 @@ Hmxpdf/
   encrypt, watermark, rasterize) used by the app and covered by JVM tests.
 - **ocr-core** wraps OCR engines behind one interface and stamps recognized text
   into searchable PDFs.
-- **office_engine** is intentionally not bundled: the LibreOffice binaries are
-  ARM-only and are installed only when the user requests the engine.
+- **office_engine** is intentionally not bundled in the APK. It can carry the
+  ARM-only LibreOffice binaries for Play bundle builds; at runtime the app installs
+  the engine through its own verified download when the user asks for it, and the
+  `fdroid` build does not offer it.
 
 ## Installation
 
