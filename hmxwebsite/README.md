@@ -132,6 +132,31 @@ The launch gate checks:
 - release fallback strings and API wiring present;
 - the placeholder domain is gone.
 
+## Deploy to Vercel (current production)
+
+Production URL: <https://hmxpdf-website.vercel.app>
+
+The `hmxpdf-website` Vercel project is connected to
+`https://github.com/bharti1233/Hmxpdf` with these settings:
+
+- Root Directory: `hmxwebsite`
+- Framework Preset: Other
+- Build Command: none (the compiled stylesheet is committed)
+- Output Directory: `.`
+- Production Branch: `release/hmxpdf-2.1.1-build`
+
+Every push to `release/hmxpdf-2.1.1-build` creates a production deployment
+automatically. Pushes to other branches create preview deployments. `vercel.json`
+supplies clean URLs, the CSP, the security headers, and the cache policy, and
+`.vercelignore` keeps local tooling and source files out of the upload.
+
+To redeploy the latest pushed commit without changing any file:
+
+```bash
+cd hmxwebsite
+vercel --prod
+```
+
 ## Deploy to Cloudflare Pages
 
 1. Push this folder to the repository (the repository root contains `hmxwebsite/`).
