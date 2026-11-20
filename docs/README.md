@@ -33,6 +33,7 @@ changes the answer.
 | [`phase3/`](phase3/), [`phase3-button-audit/`](phase3-button-audit/) | Page setup, headers and footers |
 | [`phase-completion/`](phase-completion/) | Phase 4.0–4.6 completion reports: save foundation, autosave and recovery, tables, notes, spell check, read aloud |
 | [`releases/`](releases/) | Main-branch publication report |
+| [`release-intelligence/`](release-intelligence/) | Release-intelligence audit, download metrics, cloud device testing, privacy flow, operations, and implementation reports |
 | `AUTONOMOUS_DEVELOPMENT_MASTER_LOG.md` | Running log of autonomous development sessions |
 
 ## Known stale content

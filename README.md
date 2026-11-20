@@ -14,9 +14,9 @@ Jetpack Compose.
 [Features](https://hmxpdf-website.vercel.app/features) ·
 [Documentation](docs/) ·
 [Contributing](CONTRIBUTING.md) ·
-[Report a bug](https://github.com/bharti1233/HMXPDF/issues/new?template=bug_report.yml)
+[Report a bug](https://github.com/tanishka1233/HMXPDF/issues/new?template=bug_report.yml)
 
-[![Android build](https://github.com/bharti1233/HMXPDF/actions/workflows/android.yml/badge.svg?branch=release/hmxpdf-2.1.1-build)](https://github.com/bharti1233/HMXPDF/actions/workflows/android.yml)
+[![Android build](https://github.com/tanishka1233/HMXPDF/actions/workflows/android.yml/badge.svg?branch=release/hmxpdf-2.1.1-build)](https://github.com/tanishka1233/HMXPDF/actions/workflows/android.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
 ![Android 6.0+](https://img.shields.io/badge/Android-6.0%2B-3ddc84.svg)
 ![Kotlin 2.3](https://img.shields.io/badge/Kotlin-2.3-7f52ff.svg)
@@ -25,7 +25,7 @@ Jetpack Compose.
 </div>
 
 > **Release status: HMXPDF v2.1.1 is published.** The official Android release
-> is available on [GitHub Releases](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1)
+> is available on [GitHub Releases](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1)
 > as a single ZIP containing all five signed APK variants. The website's
 > [download page](https://hmxpdf-website.vercel.app/download) reads the release
 > feed and shows the version, date, asset size, and SHA-256.
@@ -191,7 +191,7 @@ Hmxpdf/
 ### Official release (recommended)
 
 Download **HMXPDF-v2.1.1-Android-APKs.zip** from the
-[GitHub release](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1). The
+[GitHub release](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1). The
 ZIP contains all five signed APK variants and a `README.txt` that explains which
 one matches your device.
 
@@ -211,7 +211,7 @@ launcher icons are in the development branch.
 Build a debug APK and install it with ADB:
 
 ```bash
-git clone https://github.com/bharti1233/HMXPDF.git
+git clone https://github.com/tanishka1233/HMXPDF.git
 cd HMXPDF
 ./gradlew :app:assemblePlayDebug
 adb install -r app/build/outputs/apk/play/debug/app-play-universal-debug.apk
@@ -229,14 +229,14 @@ downloadable Office engine; the `play` flavor targets Google Play delivery.
 
 Every successful run of the **Android build** workflow uploads a
 `hmx-pdf-debug-apk` artifact. Open the
-[Actions tab](https://github.com/bharti1233/HMXPDF/actions/workflows/android.yml),
+[Actions tab](https://github.com/tanishka1233/HMXPDF/actions/workflows/android.yml),
 choose the latest green run, and download the artifact. CI artifacts expire and
 are debug-signed — they are for testing only.
 
 ### APK downloads
 
 The official APK ZIP is attached to the
-[v2.1.1 GitHub Release](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1),
+[v2.1.1 GitHub Release](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1),
 together with a `.sha256` checksum file. The
 [download page](https://hmxpdf-website.vercel.app/download) reads the repository's
 releases API and shows the same release information.
@@ -308,12 +308,40 @@ Bug reports, documentation fixes, and focused pull requests are welcome.
   used for development. See [docs/BRANCHING.md](docs/BRANCHING.md).
 - **Continuous integration:** Android build workflow, currently green on the
   default branch.
-- **Releases:** [v2.1.1](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1)
+- **Releases:** [v2.1.1](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1)
   published (tag `v2.1.1`, target `1a069bb`).
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md), derived from the repository's Git
   history.
 - **Documentation audit:** [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md).
 - **Licensing audit:** [docs/LICENSING_AUDIT.md](docs/LICENSING_AUDIT.md).
+
+## Release intelligence and device testing
+
+Two project-level facilities report on the release without changing the app or
+its privacy behaviour:
+
+- **Download intelligence** — a stdlib-only collector reads the public GitHub
+  Releases API, stores one cumulative snapshot per day, and writes a static
+  dataset. The [dashboard](https://hmxpdf-website.vercel.app/release-intelligence)
+  shows aggregate APK request counts by release and architecture. GitHub exposes
+  requests, not unique people or successful installs; debug APKs, AABs, checksums,
+  and source archives are excluded.
+- **Cloud device testing** — an opt-in workflow builds debug APKs and can run a
+  small instrumentation suite on Google Cloud Developer Device Platform (Device
+  Run, Preview) with keyless OIDC. It is skipped with a notice until Google Cloud
+  is configured, and a skipped job is never reported as a pass.
+
+Details, limits, and rollback steps:
+
+- [Download intelligence](docs/release-intelligence/DOWNLOAD_INTELLIGENCE.md)
+- [Cloud device testing](docs/release-intelligence/CLOUD_DEVICE_TESTING.md)
+- [Privacy and data flow](docs/release-intelligence/PRIVACY_AND_DATA_FLOW.md)
+- [Operations guide](docs/release-intelligence/OPERATIONS_GUIDE.md)
+- [Implementation report](docs/release-intelligence/IMPLEMENTATION_REPORT.md)
+
+No analytics SDK, cookie, fingerprint, per-user download tracking, or document
+upload is involved. Website analytics remain disabled until the owner approves
+them.
 
 ## Acknowledgements
 
@@ -345,9 +373,9 @@ their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ## Links
 
 - Website: <https://hmxpdf-website.vercel.app>
-- Repository: <https://github.com/bharti1233/HMXPDF>
-- Releases: <https://github.com/bharti1233/HMXPDF/releases>
-- Issues: <https://github.com/bharti1233/HMXPDF/issues>
+- Repository: <https://github.com/tanishka1233/HMXPDF>
+- Releases: <https://github.com/tanishka1233/HMXPDF/releases>
+- Issues: <https://github.com/tanishka1233/HMXPDF/issues>
 - Privacy: [PRIVACY.md](PRIVACY.md)
 - Security: [SECURITY.md](SECURITY.md)
 - Support: <https://hmxpdf-website.vercel.app/support>

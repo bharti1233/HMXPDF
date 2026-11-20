@@ -63,6 +63,25 @@ content on-device and do not send document contents to an HMXPDF server.
 HMXPDF has no accounts, profiles, or social features, and collects no personal
 information itself.
 
+## Project infrastructure
+
+This section describes repository and website tooling, not the Android app.
+
+- **Release metrics.** A scheduled GitHub Actions workflow reads the public
+  GitHub Releases API and commits aggregate asset download counters (release tag,
+  asset name, size, digest, count, and one cumulative snapshot per day). These are
+  request counts, not users or installs. No per-download event, cookie, device
+  identifier, or app-side beacon is used.
+- **Website dashboard.** The static site reads that committed JSON from its own
+  origin. Website analytics are not enabled.
+- **Optional cloud tests.** An opt-in workflow can run debug APKs and generated
+  test fixtures on Google Cloud device tests. It never uploads user documents or
+  signing secrets.
+
+The app’s own network use, permissions, and on-device processing described above
+are unchanged. Full detail:
+[docs/release-intelligence/PRIVACY_AND_DATA_FLOW.md](docs/release-intelligence/PRIVACY_AND_DATA_FLOW.md).
+
 ## Reporting a concern
 
 Do not attach private documents, personal information, access tokens, or signing
