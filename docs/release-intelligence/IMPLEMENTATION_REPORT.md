@@ -24,7 +24,7 @@ A skipped cloud job is not a pass. A missing metric is not zero.
 | 1 | Download intelligence + snapshots | Done, verified locally | `collect.py`, 17 unit tests, real dataset generated |
 | 2 | Website analytics | **Not enabled** — documentation only | No script added; exact steps in `OPERATIONS_GUIDE.md` §4 |
 | 3 | Cloud device testing workflow | Implemented, **never executed** | `cloud-device-tests.yml`, `cloud_report.py`, 11 unit tests |
-| 4 | Instrumentation coverage | Implemented, compilation **not yet verified** | two `androidTest` files, runner and deps configured |
+| 4 | Instrumentation coverage | Implemented, CI build verified | two `androidTest` files; `Cloud device tests` build job passed on `4662a15` |
 | 5 | Dashboard | Done, verified locally | page, JS, CSS, dataset checks, sitemap, footer links |
 | 6 | Release integration / gate | **Not enabled** — documented plan only | production workflow and release guard untouched |
 
@@ -143,10 +143,13 @@ Inventing a device id, flag, or result was explicitly avoided.
 - `PdfRenderInstrumentationTest.kt` — generates a PDF with PdfBox, opens it with
   the platform `PdfRenderer`, and asserts a dark pixel from the drawn square.
 
-Compilation has **not** been verified: this environment has no Android SDK. The
-existing `android.yml` build job does not run `assembleAndroidTest`. CI
-verification is pending a push that triggers the build, plus the cloud workflow’s
-own build job.
+Compilation is now verified in CI. The `Cloud device tests` build job ran
+`assemblePlayDebug assemblePlayDebugAndroidTest` successfully on commit `4662a15`
+(run `44660011655`) after two R8 fixes: supplying `testProguardFiles` for the
+instrumentation APK so compile-time-only Error Prone and `javax.lang.model`
+annotations are not treated as missing. The existing `android.yml` build job
+still does not build `androidTest`; the cloud workflow’s build job is what
+verifies it. No cloud session has run.
 
 ## 4. Pending owner action
 
@@ -251,16 +254,16 @@ Not changed: `AndroidManifest.xml`, package id, version, signing configuration,
 | JSON parse (dataset, placeholder, catalog) | pass |
 | Workflow YAML parse (PyYAML) | pass (3 files, expected job sets) |
 | `actionlint` | unavailable in container (`Illegal instruction`) |
-| Android unit tests / lint | not run locally (no Android SDK); CI on push |
-| `androidTest` compilation | not run; CI on push |
-| Cloud device session | never run; unconfigured |
-| Live site deployment | pending merge + Vercel build |
+| Android unit tests / lint | CI green on `4662a15` (`Android build`: build, release, release-guard) |
+| `androidTest` compilation | CI green on `4662a15` (`Cloud device tests` build job) |
+| Cloud device session | never run; unconfigured (cloud job skipped with notice) |
+| Live site deployment | deployed; `/release-intelligence` and `/data/release-intelligence.json` return HTTP 200 |
 
 ## 8. Honest conclusion
 
-The repository-side implementation is complete and locally verified for the
-parts that do not need Google Cloud or Vercel. The cloud feature is real code
-with a fail-closed gate, but it has produced **zero** device results. The
+The repository-side implementation is complete and verified by local checks plus
+CI. The cloud feature is real code with a fail-closed gate and a green build job,
+but it has produced **zero** device results. The
 dashboard shows that plainly. Website analytics remain off, the app’s privacy
 behaviour is unchanged, the production release path is untouched, and `v2.1.1`
 was neither duplicated nor modified.

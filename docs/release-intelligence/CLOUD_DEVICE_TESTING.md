@@ -1,9 +1,10 @@
 # Cloud device testing
 
-Status: **implemented, not executed.** Google Cloud access is not configured for
-this repository, so no billable session has been started and no result is
-claimed. The workflow fails closed: an unconfigured run is skipped with a
-notice, never reported as a pass.
+Status: **implemented, build verified, not executed.** The debug and
+instrumentation APKs build successfully in CI (run `44660011655`, commit
+`4662a15`). Google Cloud access is not configured for this repository, so no
+billable session has been started and no result is claimed. The workflow fails
+closed: an unconfigured run is skipped with a notice, never reported as a pass.
 
 ## Provider verification
 

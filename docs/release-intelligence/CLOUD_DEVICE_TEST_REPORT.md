@@ -10,6 +10,7 @@ result exists yet. It contains no invented pass rate, device result, or timing.
 ## 1. Result
 
 ```
+Test APK build:      passed (CI run 44660011655, commit 4662a15)
 Sessions submitted:  0
 Devices exercised:   0
 Tests executed:      0
@@ -134,7 +135,8 @@ consumes device time.
 ## 7. What would make this report say “passed”
 
 1. Complete the Google Cloud setup in `CLOUD_DEVICE_TESTING.md`.
-2. Confirm a read-only catalog call succeeds.
+2. Confirm a read-only catalog call succeeds. (The build half is already green;
+   this step is about authentication and IAM.)
 3. Dispatch **Cloud device tests** with `device_matrix=default` and
    `confirm_paid_run=true`.
 4. Open the run, review the step summary, and download the
@@ -147,7 +149,9 @@ implemented, gated, and unexecuted.**
 
 ## 8. Recommended next increments
 
-1. Push and confirm `assemblePlayDebugAndroidTest` compiles in CI.
+1. ~~Push and confirm `assemblePlayDebugAndroidTest` compiles in CI.~~ Done:
+   the build job passed on commit `4662a15`. Two R8 fixes were required; see
+   `IMPLEMENTATION_REPORT.md` §3.2.
 2. Enable the minimum three-device matrix and run it manually twice.
 3. Add a document-picker smoke test using a generated DOCX/XLSX fixture in app
    cache, once a stable semantics selector exists.
