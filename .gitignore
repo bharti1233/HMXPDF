@@ -71,3 +71,7 @@ scratch/
 
 # Upstream reference clones (study only)
 /reference/
+
+# Python bytecode from local test runs
+__pycache__/
+*.pyc

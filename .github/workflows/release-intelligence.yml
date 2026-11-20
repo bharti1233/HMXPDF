@@ -1,0 +1,105 @@
+name: Release intelligence
+
+# Collects aggregate GitHub release download counters and writes daily snapshots.
+# The only credentials used are the workflow's own GITHUB_TOKEN, which is
+# automatically scoped to this repository. No signing secret is referenced here.
+
+on:
+  schedule:
+    # Daily heartbeat. GitHub may delay scheduled runs during peak load.
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+    inputs:
+      force_snapshot:
+        description: 'Write a snapshot even if the cumulative counters did not change'
+        required: false
+        default: false
+        type: boolean
+  release:
+    types: [published, edited, released, unpublished, deleted]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-intelligence
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect download counters
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Release events check out a tag; the snapshot must be committed to the
+          # default branch instead.
+          ref: ${{ github.event.repository.default_branch }}
+          # Pushes the refreshed data file back to the same branch.
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run collector unit tests
+        run: python3 -m unittest discover -s tools/release_intelligence -p 'test_*.py' -v
+
+      - name: Collect release intelligence
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HMXPDF_REPO: tanishka1233/HMXPDF
+          FORCE_SNAPSHOT: ${{ inputs.force_snapshot }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${FORCE_SNAPSHOT:-false}" = "true" ]; then
+            args+=(--force-snapshot)
+          fi
+          python3 tools/release_intelligence/collect.py "${args[@]}"
+          python3 tools/release_intelligence/collect.py --check
+
+      - name: Summarize
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          data = json.loads(Path("hmxwebsite/data/release-intelligence.json").read_text())
+          t = data["totals"]
+          print("### HMXPDF release intelligence")
+          print()
+          print(f"- Repository: `{data['repository']}`")
+          print(f"- Generated: {data['generated_at_utc']}")
+          print(f"- Releases: {t['releases']} ({t['releases_with_apk']} with APK assets)")
+          print(f"- Aggregate APK downloads: {t['apk_downloads']}")
+          print(f"- Installable APK downloads: {t['installable_apk_downloads']}")
+          print(f"- APK ZIP (multi-ABI) downloads: {t['apk_bundle_downloads']}")
+          print()
+          print("GitHub counters are request counts, not unique users or installs.")
+          PY
+
+      - name: Commit refreshed data
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hmxwebsite/data
+          if git diff --cached --quiet; then
+            echo "No data change; nothing to commit."
+            exit 0
+          fi
+          git commit -m "Update release intelligence data [skip ci]"
+          git push origin "HEAD:refs/heads/${{ github.event.repository.default_branch }}"
+
+      - name: Upload dashboard data
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-intelligence-data
+          path: |
+            hmxwebsite/data/release-intelligence.json
+            hmxwebsite/data/snapshots/*.json
+          retention-days: 30
+          if-no-files-found: error

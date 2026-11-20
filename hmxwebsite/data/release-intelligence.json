@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "repository": "tanishka1233/HMXPDF",
+  "generated_at_utc": "2026-11-20T01:26:05Z",
+  "source": "GitHub REST API /repos/{repo}/releases (asset download_count)",
+  "source_url": "https://api.github.com/repos/tanishka1233/HMXPDF/releases",
+  "disclaimers": [
+    "download_count is the number of asset download requests GitHub has recorded, not unique people and not successful installations.",
+    "APK ZIP bundles are multi-ABI packages; they are counted as APK-package downloads but not assigned to a single architecture.",
+    "Debug APKs, AABs, source archives, checksum files and other assets are excluded from APK download totals.",
+    "Historical values are reconstructed from periodic cumulative snapshots, not from per-download events."
+  ],
+  "totals": {
+    "releases": 1,
+    "releases_with_apk": 1,
+    "apk_downloads": 2,
+    "installable_apk_downloads": 0,
+    "apk_bundle_downloads": 2,
+    "assets": 2
+  },
+  "latest_release": {
+    "tag": "v2.1.1",
+    "title": "HMXPDF v2.1.1 \u2014 Official Android Release",
+    "published_at": "2026-11-18T17:25:39Z",
+    "url": "https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1",
+    "apk_downloads": 2
+  },
+  "releases": [
+    {
+      "id": 450322376,
+      "tag": "v2.1.1",
+      "title": "HMXPDF v2.1.1 \u2014 Official Android Release",
+      "draft": false,
+      "prerelease": false,
+      "published_at": "2026-11-18T17:25:39Z",
+      "url": "https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1",
+      "assets": [
+        {
+          "name": "HMXPDF-v2.1.1-Android-APKs.zip",
+          "kind": "apk_bundle_zip",
+          "kind_label": "APK ZIP (multi-ABI bundle)",
+          "abi": "multi",
+          "size": 132886048,
+          "download_count": 2,
+          "content_type": "application/zip",
+          "digest": "18ed388d55426626fc7f02f90f883d8d9426a61fb2742c43fa02925016c34e5e",
+          "browser_download_url": "https://github.com/tanishka1233/HMXPDF/releases/download/v2.1.1/HMXPDF-v2.1.1-Android-APKs.zip",
+          "state": "uploaded"
+        },
+        {
+          "name": "HMXPDF-v2.1.1-Android-APKs.zip.sha256",
+          "kind": "checksum",
+          "kind_label": "Checksum or text file",
+          "abi": "none",
+          "size": 97,
+          "download_count": 3,
+          "content_type": "text/plain",
+          "digest": "d7a7fd1fee5d3c5cc449998fef8ff594c241aafb9050aa0ddad7a7a34cab6879",
+          "browser_download_url": "https://github.com/tanishka1233/HMXPDF/releases/download/v2.1.1/HMXPDF-v2.1.1-Android-APKs.zip.sha256",
+          "state": "uploaded"
+        }
+      ],
+      "apk_downloads": 2,
+      "installable_apk_downloads": 0,
+      "apk_asset_count": 1,
+      "counted_assets": [
+        {
+          "name": "HMXPDF-v2.1.1-Android-APKs.zip",
+          "kind": "apk_bundle_zip",
+          "abi": "multi",
+          "download_count": 2
+        }
+      ],
+      "downloads_by_abi": {
+        "multi": 2
+      },
+      "top_asset": {
+        "asset_name": "HMXPDF-v2.1.1-Android-APKs.zip",
+        "abi": "multi",
+        "download_count": 2
+      },
+      "excluded_assets": [
+        {
+          "name": "HMXPDF-v2.1.1-Android-APKs.zip.sha256",
+          "kind": "checksum",
+          "download_count": 3,
+          "reason": "not an APK package download"
+        }
+      ],
+      "share_percent": 100.0
+    }
+  ],
+  "downloads_by_abi": {
+    "multi": {
+      "downloads": 2,
+      "percent": 100.0
+    }
+  },
+  "most_downloaded_variant": {
+    "abi": "multi",
+    "label": "APK ZIP (multi-ABI)",
+    "downloads": 2,
+    "percent": 100.0
+  },
+  "release_comparison": [
+    {
+      "tag": "v2.1.1",
+      "published_at": "2026-11-18T17:25:39Z",
+      "apk_downloads": 2,
+      "delta_from_previous": null
+    }
+  ],
+  "snapshots": [
+    {
+      "date": "2026-11-20",
+      "captured_at_utc": "2026-11-20T01:26:05Z",
+      "total_apk_downloads": 2
+    }
+  ],
+  "cloud_tests": {
+    "status": "not_configured",
+    "summary": "No cloud device test run has been recorded.",
+    "runs": []
+  },
+  "unavailable_metrics": [
+    {
+      "metric": "Website page views",
+      "reason": "Vercel Web Analytics is not enabled for this project."
+    },
+    {
+      "metric": "Website release-link clicks",
+      "reason": "No click analytics are collected; clicks are not downloads in any case."
+    },
+    {
+      "metric": "Unique downloaders",
+      "reason": "GitHub exposes only aggregate asset request counters."
+    },
+    {
+      "metric": "Successful installations",
+      "reason": "No installation telemetry exists and none will be added."
+    }
+  ],
+  "abi_labels": {
+    "arm64-v8a": "ARM64 (arm64-v8a)",
+    "armeabi-v7a": "ARMv7 (armeabi-v7a)",
+    "x86": "x86",
+    "x86_64": "x86_64",
+    "universal": "Universal",
+    "multi": "APK ZIP (multi-ABI)",
+    "unknown": "Unknown ABI",
+    "debug": "Debug",
+    "none": "Not an APK"
+  },
+  "snapshot_written": true
+}

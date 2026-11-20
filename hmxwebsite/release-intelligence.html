@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Release intelligence — HMXPDF</title>
+    <meta
+      name="description"
+      content="Aggregate HMXPDF release download counters, historical snapshots, data-quality notes, and cloud device test status."
+    />
+    <meta
+      name="keywords"
+      content="HMXPDF release downloads, Android APK download counts, HMXPDF release intelligence, HMXPDF cloud device tests"
+    />
+    <link rel="canonical" href="https://hmxpdf-website.vercel.app/release-intelligence" />
+    <meta name="theme-color" content="#0A0812" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="assets/img/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HMXPDF" />
+    <meta property="og:title" content="Release intelligence — HMXPDF" />
+    <meta
+      property="og:description"
+      content="Aggregate HMXPDF release download counters, historical snapshots, data-quality notes, and cloud device test status."
+    />
+    <meta property="og:url" content="https://hmxpdf-website.vercel.app/release-intelligence" />
+    <meta property="og:image" content="https://hmxpdf-website.vercel.app/assets/img/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="HMXPDF — PDF, Word and spreadsheet tools for Android" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Release intelligence — HMXPDF" />
+    <meta
+      name="twitter:description"
+      content="Aggregate HMXPDF release download counters, historical snapshots, data-quality notes, and cloud device test status."
+    />
+    <meta name="twitter:image" content="https://hmxpdf-website.vercel.app/assets/img/og-image.jpg" />
+
+    <link rel="stylesheet" href="assets/css/site.css" />
+    <link rel="stylesheet" href="assets/css/intelligence.css" />
+    <script src="assets/js/site.js"></script>
+    <script src="assets/js/release-intelligence.js" defer></script>
+  </head>
+  <body class="min-h-screen bg-night-950">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header id="site-header" class="site-header">
+      <div class="container-x flex h-16 items-center justify-between gap-4">
+        <a href="index.html" class="flex items-center gap-2.5" aria-label="HMXPDF home">
+          <img src="assets/img/icon-192.png" width="36" height="36" alt="" class="h-9 w-9 rounded-xl" />
+          <span class="text-lg font-bold tracking-tight text-white">HMX<span class="text-accent-light">PDF</span></span>
+        </a>
+
+        <nav class="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="faq.html">FAQ</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="about.html">About</a>
+        </nav>
+
+        <div class="hidden lg:block">
+          <a class="btn-primary btn-sm" href="download.html">Latest release</a>
+        </div>
+
+        <button
+          id="nav-toggle"
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white transition hover:border-accent/40 hover:bg-white/5 lg:hidden"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+          aria-label="Toggle navigation"
+        >
+          <svg class="icon-open h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-close h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="mobile-nav" class="hidden border-t border-white/5 bg-night-950/95 lg:hidden">
+        <nav class="container-x flex flex-col gap-1 py-4" aria-label="Mobile">
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="faq.html">FAQ</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="about.html">About</a>
+          <a class="btn-primary mt-3" href="download.html">Latest release</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="relative overflow-hidden border-b border-white/5">
+        <div class="pointer-events-none absolute inset-0 bg-radial-accent" aria-hidden="true"></div>
+        <div class="container-x relative py-16 sm:py-20">
+          <p class="eyebrow hero-rise">Project metrics</p>
+          <h1 class="hero-rise mt-5 max-w-3xl text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            Release intelligence, <span class="gradient-text">without tracking people.</span>
+          </h1>
+          <p class="hero-rise hero-rise-delay mt-6 max-w-2xl text-base leading-relaxed text-mist sm:text-lg">
+            Aggregate GitHub release counters, daily snapshots, and cloud device test status.
+            No accounts, no cookies, no fingerprinting, and no per-person download tracking.
+          </p>
+          <p class="mt-4 text-xs text-mist-dim">
+            Data refreshed <span id="intel-refresh">—</span>. Source:
+            <a
+              class="text-accent-light underline decoration-accent/40 underline-offset-4 hover:text-white"
+              id="intel-source-link"
+              href="https://api.github.com/repos/tanishka1233/HMXPDF/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              >GitHub Releases API</a
+            >.
+          </p>
+        </div>
+      </section>
+
+      <section class="container-x py-12 sm:py-16" aria-live="polite" aria-busy="true" id="intel-panel">
+        <div id="intel-loading" class="animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-9">
+          <div class="h-6 w-40 rounded-full bg-white/10"></div>
+          <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="h-24 rounded-2xl bg-white/5"></div>
+            <div class="h-24 rounded-2xl bg-white/5"></div>
+            <div class="h-24 rounded-2xl bg-white/5"></div>
+            <div class="h-24 rounded-2xl bg-white/5"></div>
+          </div>
+          <p class="mt-6 text-xs text-mist-dim">Loading the committed release dataset…</p>
+        </div>
+
+        <noscript>
+          <div class="rounded-3xl border border-white/10 bg-white/[0.02] p-6 sm:p-9">
+            <h2 class="text-2xl font-bold tracking-tight text-white">This dashboard needs JavaScript</h2>
+            <p class="mt-3 max-w-2xl text-sm leading-relaxed text-mist">
+              The page reads a static JSON file that ships with the website. You can open
+              <a class="text-accent-light underline decoration-accent/40 underline-offset-4 hover:text-white" href="data/release-intelligence.json">the raw dataset</a>
+              or the
+              <a class="text-accent-light underline decoration-accent/40 underline-offset-4 hover:text-white" href="https://github.com/tanishka1233/HMXPDF/releases">GitHub releases page</a>
+              directly.
+            </p>
+          </div>
+        </noscript>
+
+        <div id="intel-error" class="rounded-3xl border border-amber-400/25 bg-amber-400/[0.04] p-6 sm:p-9" hidden>
+          <h2 class="text-2xl font-bold tracking-tight text-white">Release data is unavailable</h2>
+          <p class="mt-3 max-w-2xl text-sm leading-relaxed text-mist">
+            The committed dataset could not be read. Nothing has been estimated or filled in.
+            Open the GitHub releases page for the authoritative list.
+          </p>
+          <a class="btn-primary btn-sm mt-5" href="https://github.com/tanishka1233/HMXPDF/releases">Open GitHub Releases</a>
+        </div>
+
+        <div id="intel-content" hidden>
+          <div class="intel-grid">
+            <div class="intel-stat">
+              <p class="intel-stat__label">Aggregate APK downloads</p>
+              <p class="intel-stat__value" id="intel-total-downloads">—</p>
+              <p class="intel-stat__meta">GitHub asset requests, not unique people</p>
+            </div>
+            <div class="intel-stat">
+              <p class="intel-stat__label">Published releases</p>
+              <p class="intel-stat__value" id="intel-releases">—</p>
+              <p class="intel-stat__meta" id="intel-releases-meta">—</p>
+            </div>
+            <div class="intel-stat">
+              <p class="intel-stat__label">Latest release</p>
+              <p class="intel-stat__value" id="intel-latest">—</p>
+              <p class="intel-stat__meta" id="intel-latest-meta">—</p>
+            </div>
+            <div class="intel-stat">
+              <p class="intel-stat__label">Cloud testing</p>
+              <p class="intel-stat__value" id="intel-cloud-status">—</p>
+              <p class="intel-stat__meta" id="intel-cloud-meta">—</p>
+            </div>
+          </div>
+
+          <div class="mt-12 grid gap-8 lg:grid-cols-[1.35fr_1fr]">
+            <div class="min-w-0">
+              <h2 class="text-2xl font-bold tracking-tight text-white">Downloads by release</h2>
+              <p class="mt-2 text-sm leading-relaxed text-mist">
+                APK and APK ZIP assets only. Debug APKs, AABs, checksum files, and source archives are excluded.
+              </p>
+              <div class="intel-table-wrap mt-5">
+                <table class="intel-table">
+                  <caption>Newest release first.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Release</th>
+                      <th scope="col">Published</th>
+                      <th scope="col" class="intel-num">APK downloads</th>
+                      <th scope="col" class="intel-num">Share</th>
+                      <th scope="col">Top variant</th>
+                    </tr>
+                  </thead>
+                  <tbody id="intel-release-rows">
+                    <tr>
+                      <td colspan="5">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="min-w-0">
+              <h2 class="text-2xl font-bold tracking-tight text-white">By architecture</h2>
+              <p class="mt-2 text-sm leading-relaxed text-mist">
+                APK ZIP bundles carry several ABIs, so they are shown separately instead of being assigned to one architecture.
+              </p>
+              <div id="intel-abi-list" class="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <p class="intel-note">—</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-12 grid gap-8 lg:grid-cols-2">
+            <div class="min-w-0">
+              <h2 class="text-2xl font-bold tracking-tight text-white">Snapshot history</h2>
+              <p class="mt-2 text-sm leading-relaxed text-mist">
+                Cumulative APK download counter, captured once per day by the repository workflow. A flat line
+                means the counter did not change, not that data is missing.
+              </p>
+              <div id="intel-trend" class="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <p class="intel-note">—</p>
+              </div>
+            </div>
+
+            <div class="min-w-0">
+              <h2 class="text-2xl font-bold tracking-tight text-white">Release comparison</h2>
+              <p class="mt-2 text-sm leading-relaxed text-mist">
+                Difference between consecutive releases at snapshot time. Older releases can keep accumulating
+                downloads after a newer release ships.
+              </p>
+              <div class="intel-table-wrap mt-5">
+                <table class="intel-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Release</th>
+                      <th scope="col" class="intel-num">APK downloads</th>
+                      <th scope="col" class="intel-num">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody id="intel-comparison">
+                    <tr>
+                      <td colspan="3">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-12 grid gap-8 lg:grid-cols-2">
+            <div class="min-w-0 rounded-3xl border border-white/10 bg-white/[0.02] p-6 sm:p-8">
+              <h2 class="text-2xl font-bold tracking-tight text-white">Website</h2>
+              <p class="mt-3 text-sm leading-relaxed text-mist">
+                Website analytics are not enabled. Page views and release-link clicks are reported as
+                <strong class="text-white">unavailable</strong>, not as zero.
+              </p>
+              <ul id="intel-unavailable" class="mt-4 space-y-3 text-sm leading-relaxed text-mist">
+                <li>—</li>
+              </ul>
+            </div>
+
+            <div class="min-w-0 rounded-3xl border border-white/10 bg-white/[0.02] p-6 sm:p-8">
+              <h2 class="text-2xl font-bold tracking-tight text-white">Cloud device testing</h2>
+              <p class="mt-3 text-sm leading-relaxed text-mist" id="intel-cloud-summary">—</p>
+              <div class="intel-table-wrap mt-4">
+                <table class="intel-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Run</th>
+                      <th scope="col">Device</th>
+                      <th scope="col">Android</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="intel-cloud-runs">
+                    <tr>
+                      <td colspan="4">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="intel-note mt-4">
+                Cloud results are aggregate CI outcomes. Raw logs, stack traces, and private storage URLs are
+                never published here.
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-12 rounded-3xl border border-white/10 bg-white/[0.02] p-6 sm:p-8">
+            <h2 class="text-xl font-bold tracking-tight text-white">What these numbers do and do not mean</h2>
+            <ul id="intel-disclaimers" class="mt-4 space-y-3 text-sm leading-relaxed text-mist">
+              <li>—</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-white/10 bg-night-900">
+      <div class="container-x py-14">
+        <div class="grid gap-10 md:grid-cols-4">
+          <div class="md:col-span-2">
+            <a href="index.html" class="flex items-center gap-2.5" aria-label="HMXPDF home">
+              <img src="assets/img/icon-192.png" width="36" height="36" alt="" class="h-9 w-9 rounded-xl" />
+              <span class="text-lg font-bold tracking-tight text-white">HMX<span class="text-accent-light">PDF</span></span>
+            </a>
+            <p class="mt-4 max-w-md text-sm leading-relaxed text-mist">
+              An open-source Android document toolkit for PDFs, Word files, spreadsheets, scans, and
+              images. Built with Kotlin and Jetpack Compose.
+            </p>
+            <p class="mt-4 text-xs text-mist-dim">Source licensed under the MIT License.</p>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-mist-dim">Explore</p>
+            <ul class="mt-4 space-y-2.5">
+              <li><a class="footer-link" href="index.html">Home</a></li>
+              <li><a class="footer-link" href="features.html">Features</a></li>
+              <li><a class="footer-link" href="download.html">Download</a></li>
+              <li><a class="footer-link" href="release-intelligence.html">Release intelligence</a></li>
+              <li><a class="footer-link" href="faq.html">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-mist-dim">Project</p>
+            <ul class="mt-4 space-y-2.5">
+              <li><a class="footer-link" href="support.html">Support</a></li>
+              <li><a class="footer-link" href="privacy.html">Privacy Policy</a></li>
+              <li><a class="footer-link" href="about.html">About</a></li>
+              <li>
+                <a class="footer-link" href="https://github.com/tanishka1233/HMXPDF" target="_blank" rel="noopener noreferrer">Source code</a>
+              </li>
+              <li>
+                <a class="footer-link" href="https://github.com/tanishka1233/HMXPDF/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+              </li>
+              <li>
+                <a class="footer-link" href="https://github.com/tanishka1233/HMXPDF/issues" target="_blank" rel="noopener noreferrer">Report an issue</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-12 border-t border-white/10 pt-8">
+          <p class="max-w-4xl text-xs leading-relaxed text-mist-dim">
+            HMXPDF is an independent open-source Android project. Android is a trademark of Google
+            LLC. Microsoft, Word, Excel, and PowerPoint are trademarks of Microsoft Corporation.
+            LibreOffice is a trademark of The Document Foundation. HMXPDF is not affiliated with or
+            endorsed by these companies.
+          </p>
+          <p class="mt-3 text-xs text-mist-dim">
+            © <span data-year>2026</span> HMXPDF. Screenshots show the current source build.
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

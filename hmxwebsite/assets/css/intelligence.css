@@ -1,0 +1,199 @@
+/* HMXPDF — release intelligence page.
+ *
+ * Hand-written, dependency-free styles layered on the prebuilt Tailwind sheet.
+ * Kept separate so the generated site.css is never edited by hand.
+ */
+
+.intel-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .intel-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.intel-stat {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.1rem 1.2rem;
+  min-width: 0;
+}
+
+.intel-stat__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9d97b5;
+}
+
+.intel-stat__value {
+  margin-top: 0.45rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.intel-stat__meta {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: #9d97b5;
+}
+
+.intel-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+}
+
+.intel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+  min-width: 34rem;
+}
+
+.intel-table caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0.9rem 1rem 0;
+  color: #9d97b5;
+  font-size: 0.72rem;
+}
+
+.intel-table th,
+.intel-table td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+
+.intel-table th {
+  color: #9d97b5;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.intel-table td {
+  color: #d7d3e6;
+}
+
+.intel-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.intel-table .intel-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.intel-table a {
+  color: #b9a6ff;
+}
+
+.intel-table a:hover {
+  color: #ffffff;
+}
+
+.intel-progress {
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  margin-top: 0.4rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  appearance: none;
+  -webkit-appearance: none;
+  overflow: hidden;
+}
+
+.intel-progress::-webkit-progress-bar {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 9999px;
+}
+
+.intel-progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #7c5cff, #b9a6ff);
+  border-radius: 9999px;
+}
+
+.intel-progress::-moz-progress-bar {
+  background: linear-gradient(90deg, #7c5cff, #b9a6ff);
+  border-radius: 9999px;
+}
+
+.intel-row {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.intel-row:last-child {
+  border-bottom: 0;
+}
+
+.intel-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.83rem;
+}
+
+.intel-row__name {
+  color: #ffffff;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.intel-row__value {
+  color: #d7d3e6;
+  font-variant-numeric: tabular-nums;
+}
+
+.intel-note {
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: #9d97b5;
+}
+
+.intel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.15rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #d7d3e6;
+  white-space: nowrap;
+}
+
+.intel-badge--ok {
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.08);
+  color: #86efac;
+}
+
+.intel-badge--muted {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #b6b0c9;
+}

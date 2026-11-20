@@ -26,7 +26,9 @@ MAIN_PAGES = [
     "support.html",
     "about.html",
 ]
-ALL_PAGES = MAIN_PAGES + ["404.html"]
+# Pages reachable from the site but not part of the primary navigation.
+SECONDARY_PAGES = ["release-intelligence.html"]
+ALL_PAGES = MAIN_PAGES + SECONDARY_PAGES + ["404.html"]
 VOID = {
     "area",
     "base",
@@ -270,21 +272,28 @@ def check_page(page: str) -> Doc:
 
     if page != "404.html":
         current = doc.aria_current
-        expected = "index.html" if page == "index.html" else page
-        # The active item appears once in the desktop nav and once in the mobile nav.
-        if len(current) != 2:
-            fail(f"{page}: expected two aria-current=page markers, found {len(current)}")
-        elif any(item.get("href", "") != expected for item in current):
-            targets = [item.get("href", "") for item in current]
-            fail(f"{page}: aria-current points to {targets}, expected {expected}")
+        if page in SECONDARY_PAGES:
+            if current:
+                targets = [item.get("href", "") for item in current]
+                fail(f"{page}: secondary page must not mark navigation as current: {targets}")
+            else:
+                ok(f"{page}: no active navigation marker")
         else:
-            ok(f"{page}: active navigation")
+            expected = "index.html" if page == "index.html" else page
+            # The active item appears once in the desktop nav and once in the mobile nav.
+            if len(current) != 2:
+                fail(f"{page}: expected two aria-current=page markers, found {len(current)}")
+            elif any(item.get("href", "") != expected for item in current):
+                targets = [item.get("href", "") for item in current]
+                fail(f"{page}: aria-current points to {targets}, expected {expected}")
+            else:
+                ok(f"{page}: active navigation")
 
-        # Every main page must link to every main page (header or footer).
-        hrefs = {urlparse(href).path for href, _ in doc.links if href}
-        for target in MAIN_PAGES:
-            if target not in hrefs:
-                fail(f"{page}: missing navigation link to {target}")
+            # Every main page must link to every main page (header or footer).
+            hrefs = {urlparse(href).path for href, _ in doc.links if href}
+            for target in MAIN_PAGES:
+                if target not in hrefs:
+                    fail(f"{page}: missing navigation link to {target}")
         if page not in ("404.html",):
             text = doc.text
             if "trademark of Google" not in text:
@@ -393,7 +402,10 @@ def check_sitemap(host: str) -> None:
 
     ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [item.text.strip() for item in tree.findall(".//sm:loc", ns) if item.text]
-    expected = {("https://" + host + ("/" if page == "index.html" else "/" + page[:-5])) for page in MAIN_PAGES}
+    expected = {
+        ("https://" + host + ("/" if page == "index.html" else "/" + page[:-5]))
+        for page in MAIN_PAGES + SECONDARY_PAGES
+    }
     if set(locs) != expected:
         missing = sorted(expected - set(locs))
         extra = sorted(set(locs) - expected)
@@ -465,9 +477,29 @@ def main() -> int:
     else:
         ok("no APK/AAB files in the website")
 
+    # Confirm the release intelligence dataset is present and self-describing.
+    intel_path = ROOT / "data/release-intelligence.json"
+    if not intel_path.exists():
+        fail("data/release-intelligence.json: missing")
+    else:
+        try:
+            intel = json.loads(intel_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            fail(f"data/release-intelligence.json: invalid JSON: {error}")
+            intel = {}
+        if intel:
+            if intel.get("repository") != "tanishka1233/HMXPDF":
+                fail("data/release-intelligence.json: unexpected repository")
+            elif not isinstance(intel.get("totals", {}).get("apk_downloads"), int):
+                fail("data/release-intelligence.json: missing integer totals.apk_downloads")
+            elif not intel.get("disclaimers"):
+                fail("data/release-intelligence.json: missing data-quality disclaimers")
+            else:
+                ok("data/release-intelligence.json: valid aggregate dataset")
+
     # Confirm the release loader has the documented no-release fallback.
     release_js = (ROOT / "assets/js/release.js").read_text(encoding="utf-8")
-    for needle in ("No public APK release yet", "No installable APK in the latest release", "api.github.com/repos/bharti1233/HMXPDF"):
+    for needle in ("No public APK release yet", "No installable APK in the latest release", "api.github.com/repos/tanishka1233/HMXPDF"):
         if needle not in release_js:
             fail(f"release.js: missing expected fallback marker: {needle}")
     else:
