@@ -67,6 +67,9 @@ android {
         // Keep this a literal: F-Droid's update checker reads it from this file.
         versionCode = 6
         versionName = "2.1.1"
+        // Instrumentation tests run on cloud devices with the debug build only.
+        // Release signing is never available to these jobs.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Keep every locale declared by the app. Filtering this to English
         // removes values-pt-rBR from the packaged APK, so the language picker
         // can appear to work while the app continues to resolve English.
@@ -219,6 +222,12 @@ dependencies {
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("androidx.test:rules:1.5.0")
+    // Instrumentation tests (cloud device testing). These are debug-only test
+    // APKs and never part of a release artifact.
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit-ktx:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
     implementation(libs.androidx.core.ktx)
     // Per-app language (LocaleHelper). Declared directly: the play / foss builds used to get it
     // only transitively through Google's libraries, which the F-Droid build doesn't have.
