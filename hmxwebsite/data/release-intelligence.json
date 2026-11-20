@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "tanishka1233/HMXPDF",
-  "generated_at_utc": "2026-11-20T01:26:05Z",
+  "generated_at_utc": "2026-11-20T02:26:10Z",
   "source": "GitHub REST API /repos/{repo}/releases (asset download_count)",
   "source_url": "https://api.github.com/repos/tanishka1233/HMXPDF/releases",
   "disclaimers": [
@@ -118,9 +118,58 @@
     }
   ],
   "cloud_tests": {
+    "schema_version": 1,
+    "repository": "tanishka1233/HMXPDF",
+    "provider": "Google Cloud Developer Device Platform (Device Run, Preview)",
     "status": "not_configured",
-    "summary": "No cloud device test run has been recorded.",
-    "runs": []
+    "generated_at_utc": null,
+    "summary": "Cloud device testing is implemented as an opt-in workflow. It has not run because Google Cloud access is not configured. Missing data is not a pass.",
+    "runs": [],
+    "device_matrix": {
+      "default": [
+        {
+          "id": "mediumphone-arm-26",
+          "model": "Medium Phone (Arm)",
+          "android": "26",
+          "type": "virtual",
+          "why": "Oldest Android version in the current DDP catalog; API 23 is not offered."
+        },
+        {
+          "id": "shiba-34",
+          "model": "Pixel 8",
+          "android": "34",
+          "type": "physical",
+          "why": "Mid-lifecycle physical phone."
+        },
+        {
+          "id": "shiba-36",
+          "model": "Pixel 8",
+          "android": "36",
+          "type": "physical",
+          "why": "Current release target."
+        }
+      ],
+      "full": [
+        "mediumphone-arm-26",
+        "redfin-30",
+        "panther-33",
+        "shiba-34",
+        "smallphone-arm-34",
+        "mediumtablet-arm-35",
+        "shiba-36",
+        "tangorpro-36"
+      ]
+    },
+    "retention": {
+      "artifact_days": 30,
+      "cloud_storage_days": 30,
+      "note": "GitHub Actions artifacts expire after 30 days; the Cloud Storage bucket should carry an equivalent lifecycle rule."
+    },
+    "privacy": {
+      "uploads_user_documents": false,
+      "collects_device_identifiers": false,
+      "note": "Only CI-built APKs and generated test fixtures are uploaded. No user file, account, advertising id, or device identifier is collected."
+    }
   },
   "unavailable_metrics": [
     {
@@ -151,5 +200,5 @@
     "debug": "Debug",
     "none": "Not an APK"
   },
-  "snapshot_written": true
+  "snapshot_written": false
 }
