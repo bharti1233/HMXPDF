@@ -228,6 +228,9 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit-ktx:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    // androidx.test references these annotations but does not package them.
+    // Supplying them keeps R8 from rejecting the debug test APK.
+    androidTestImplementation("com.google.errorprone:error_prone_annotations:2.27.1")
     implementation(libs.androidx.core.ktx)
     // Per-app language (LocaleHelper). Declared directly: the play / foss builds used to get it
     // only transitively through Google's libraries, which the F-Droid build doesn't have.

@@ -4,8 +4,3 @@
 # bytecode dexable, plus the shared keep rules.
 -dontobfuscate
 -dontoptimize
-
-# androidx.test classes reference Error Prone annotations that are not packaged.
-# R8 only needs to know the annotations are intentionally absent in this debug
-# test APK; release builds never include androidx.test.
--dontwarn com.google.errorprone.annotations.**
