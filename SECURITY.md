@@ -9,7 +9,7 @@ Local builds and CI debug artifacts are development snapshots.
 | Version | Supported |
 |---|---|
 | `release/hmxpdf-2.1.1-build` (development) | Fixes accepted |
-| [v2.1.1](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1) | Reports accepted |
+| [v2.1.1](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1) | Reports accepted |
 | Locally built or CI debug APKs | Not supported |
 
 ## Report a vulnerability privately
@@ -20,7 +20,7 @@ details.**
 This repository has GitHub **private vulnerability reporting** enabled. Use the
 private advisory form:
 
-<https://github.com/bharti1233/HMXPDF/security/advisories/new>
+<https://github.com/tanishka1233/HMXPDF/security/advisories/new>
 
 GitHub delivers the report privately to the repository maintainers. If the form is
 unavailable to you, open a public issue that says only that you need a private

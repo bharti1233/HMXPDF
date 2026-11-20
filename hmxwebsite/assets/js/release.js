@@ -7,8 +7,8 @@
 (function () {
   'use strict';
 
-  var API_URL = 'https://api.github.com/repos/bharti1233/HMXPDF/releases/latest';
-  var RELEASES_URL = 'https://github.com/bharti1233/HMXPDF/releases';
+  var API_URL = 'https://api.github.com/repos/tanishka1233/HMXPDF/releases/latest';
+  var RELEASES_URL = 'https://github.com/tanishka1233/HMXPDF/releases';
 
   var panel = document.getElementById('release-panel');
   var chip = document.getElementById('home-release-status');

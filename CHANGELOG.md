@@ -5,7 +5,7 @@ All notable changes to HMXPDF are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Entries reference the commits that introduced each change.
 
-## [2.1.1](https://github.com/bharti1233/HMXPDF/releases/tag/v2.1.1) — 2026-11-18
+## [2.1.1](https://github.com/tanishka1233/HMXPDF/releases/tag/v2.1.1) — 2026-11-18
 
 Application version: `2.1.1` (`versionCode` 6). Default branch:
 `release/hmxpdf-2.1.1-build`.

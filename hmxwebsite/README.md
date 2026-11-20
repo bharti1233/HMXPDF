@@ -64,7 +64,7 @@ Policy and does not load third-party runtime code.
 `assets/js/release.js` requests:
 
 ```text
-https://api.github.com/repos/bharti1233/Hmxpdf/releases/latest
+https://api.github.com/repos/tanishka1233/HMXPDF/releases/latest
 ```
 
 It then:
@@ -137,7 +137,7 @@ The launch gate checks:
 Production URL: <https://hmxpdf-website.vercel.app>
 
 The `hmxpdf-website` Vercel project is connected to
-`https://github.com/bharti1233/Hmxpdf` with these settings:
+`https://github.com/tanishka1233/HMXPDF` with these settings:
 
 - Root Directory: `hmxwebsite`
 - Framework Preset: Other

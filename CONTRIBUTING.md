@@ -57,7 +57,7 @@ here does not match what you see in the repository, please open an issue.
 ### Clone and build
 
 ```bash
-git clone https://github.com/bharti1233/HMXPDF.git
+git clone https://github.com/tanishka1233/HMXPDF.git
 cd Hmxpdf
 ./gradlew :app:assemblePlayDebug
 ```
@@ -141,7 +141,7 @@ Before opening a pull request, run the checks used by CI:
 
 ## Reporting issues
 
-Use the [bug report form](https://github.com/bharti1233/HMXPDF/issues/new?template=bug_report.yml)
+Use the [bug report form](https://github.com/tanishka1233/HMXPDF/issues/new?template=bug_report.yml)
 and include:
 
 - HMXPDF version (Settings → About) and where you installed it from.
@@ -151,7 +151,7 @@ and include:
   tokens removed.
 
 For feature ideas, use the
-[feature request form](https://github.com/bharti1233/HMXPDF/issues/new?template=feature_request.yml).
+[feature request form](https://github.com/tanishka1233/HMXPDF/issues/new?template=feature_request.yml).
 For security problems, follow [SECURITY.md](SECURITY.md) and do not open a public
 issue.
 
