@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source": "https://docs.cloud.google.com/developer-device-platform/device-catalog",
+  "verified_at_utc": "2026-11-20",
+  "note": "Only ids listed in the current DDP catalog are used. Availability and capacity change; the workflow lists the catalog before submitting. Android 23 is not offered in the catalog, so Android 26 is the oldest available gap.",
+  "devices": {
+    "mediumphone-arm-26": { "model": "Medium Phone (Arm)", "android": "26", "type": "virtual", "form": "phone" },
+    "redfin-30": { "model": "Pixel 5", "android": "30", "type": "physical", "form": "phone" },
+    "panther-33": { "model": "Pixel 7", "android": "33", "type": "physical", "form": "phone" },
+    "shiba-34": { "model": "Pixel 8", "android": "34", "type": "physical", "form": "phone" },
+    "smallphone-arm-34": { "model": "Small Phone 4.65in (Arm)", "android": "34", "type": "virtual", "form": "phone" },
+    "mediumtablet-arm-35": { "model": "Medium Tablet 10.05in (Arm)", "android": "35", "type": "virtual", "form": "tablet" },
+    "shiba-36": { "model": "Pixel 8", "android": "36", "type": "physical", "form": "phone" },
+    "tangorpro-36": { "model": "Pixel Tablet", "android": "36", "type": "physical", "form": "tablet" }
+  }
+}

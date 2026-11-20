@@ -1,0 +1,334 @@
+name: Cloud device tests
+
+# Runs the debug instrumentation suite on Google Cloud Developer Device
+# Platform (Device Run, Preview) using keyless GitHub OIDC authentication.
+#
+# Cost and safety gates:
+#   - The cloud job is skipped unless GCP_WORKLOAD_IDENTITY_PROVIDER,
+#     GCP_SERVICE_ACCOUNT and GCP_PROJECT_ID are configured.
+#   - Automatic runs additionally require the repository variable
+#     DDP_AUTORUN=true; otherwise only a manual dispatch with
+#     confirm_paid_run=true starts billable sessions.
+#   - The job runs in the `cloud-testing` environment, which should require
+#     manual approval in repository settings.
+#   - Only debug test APKs are uploaded. No release-signing secret is used.
+#   - The default matrix is three devices; the full matrix is manual-only.
+
+on:
+  pull_request:
+    branches: [main, release/hmxpdf-2.1.1-build]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'hmxwebsite/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  push:
+    branches: [main, release/hmxpdf-2.1.1-build]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'hmxwebsite/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch:
+    inputs:
+      device_matrix:
+        description: 'Device matrix to run'
+        required: true
+        default: default
+        type: choice
+        options:
+          - default
+          - full
+      confirm_paid_run:
+        description: 'I confirm this dispatch may start billable cloud device sessions'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-device-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEFAULT_DEVICES: mediumphone-arm-26,shiba-34,shiba-36
+  FULL_DEVICES: mediumphone-arm-26,redfin-30,panther-33,shiba-34,smallphone-arm-34,mediumtablet-arm-35,shiba-36,tangorpro-36
+
+jobs:
+  build-test-apks:
+    name: Build debug and instrumentation APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug app and test APKs
+        run: >
+          ./gradlew assemblePlayDebug assemblePlayDebugAndroidTest
+          --stacktrace
+          -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8"
+          -Pkotlin.daemon.jvmargs=-Xmx4g
+
+      - name: Collect and validate APKs
+        run: |
+          set -euo pipefail
+          mkdir -p cloud-artifacts
+          APP_APK=$(find app/build/outputs/apk/play/debug -name '*universal*.apk' -print -quit)
+          TEST_APK=$(find app/build/outputs/apk -name '*androidTest*.apk' -print -quit)
+          if [ -z "$APP_APK" ] || [ -z "$TEST_APK" ]; then
+            echo "::error title=Missing test APK::Could not find the universal debug APK or the instrumentation APK."
+            find app/build/outputs/apk -name '*.apk' -print
+            exit 1
+          fi
+          cp "$APP_APK" cloud-artifacts/app-universal-debug.apk
+          cp "$TEST_APK" cloud-artifacts/app-debug-androidTest.apk
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APP_BADGE=$("$BUILD_TOOLS/aapt" dump badging cloud-artifacts/app-universal-debug.apk | head -1)
+          TEST_BADGE=$("$BUILD_TOOLS/aapt" dump badging cloud-artifacts/app-debug-androidTest.apk | head -1)
+          echo "App:  $APP_BADGE"
+          echo "Test: $TEST_BADGE"
+          echo "$APP_BADGE" | grep -q "package: name='com.hmx.pdf'"
+          echo "$TEST_BADGE" | grep -q "package: name='com.hmx.pdf.test'"
+          echo "$APP_BADGE" | grep -q "versionName='2.1.1'"
+
+      - name: Upload cloud test APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-test-apks
+          path: cloud-artifacts/*.apk
+          retention-days: 7
+          if-no-files-found: error
+
+  configuration:
+    name: Resolve cloud configuration
+    needs: build-test-apks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+      devices: ${{ steps.check.outputs.devices }}
+    steps:
+      - name: Check Google Cloud configuration
+        id: check
+        env:
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          MATRIX: ${{ inputs.device_matrix }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT GCP_PROJECT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::notice title=Cloud tests not configured::$name is not set. The cloud job will be skipped; this is not a test pass."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "devices=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${MATRIX:-default}" = "full" ]; then
+            echo "devices=${FULL_DEVICES}" >> "$GITHUB_OUTPUT"
+          else
+            echo "devices=${DEFAULT_DEVICES}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+  cloud-run:
+    name: Run instrumentation on cloud devices
+    needs: [build-test-apks, configuration]
+    if: >-
+      needs.configuration.outputs.enabled == 'true' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.confirm_paid_run == true) ||
+       vars.DDP_AUTORUN == 'true')
+    environment: cloud-testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Authenticate to Google Cloud with OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: beta
+
+      - name: Confirm Developer Device Platform access
+        run: |
+          set -euo pipefail
+          gcloud beta device-run devices list \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --limit=20
+
+      - name: Download test APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: cloud-test-apks
+          path: cloud-artifacts
+
+      - name: Submit instrumentation session
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          DDP_BUCKET: ${{ vars.DDP_BUCKET }}
+          DEVICES: ${{ needs.configuration.outputs.devices }}
+        run: |
+          set -uo pipefail
+          APP_APK=$(find cloud-artifacts -name 'app-universal-debug.apk' | head -1)
+          TEST_APK=$(find cloud-artifacts -name 'app-debug-androidTest.apk' | head -1)
+          started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "DDP_STARTED_AT=$started" >> "$GITHUB_ENV"
+          args=(
+            beta device-run sessions submit instrumentation
+            --project="$GCP_PROJECT_ID"
+            --device "$DEVICES"
+            --apps "$APP_APK"
+            --test "$TEST_APK"
+            --instrumentation-timeout=10m
+            --video=on-failure
+            --dumpsys=on-failure
+            --bugreport=on-failure
+            --labels="repo=tanishka1233/HMXPDF,commit=${GITHUB_SHA},run=${GITHUB_RUN_ID}"
+          )
+          if [ -n "${DDP_BUCKET:-}" ]; then
+            args+=(--bucket-name="$DDP_BUCKET")
+          fi
+          set +e
+          gcloud "${args[@]}" 2>&1 | tee device-run.log
+          submit_status=${PIPESTATUS[0]}
+          echo "DDP_SUBMIT_EXIT=$submit_status" >> "$GITHUB_ENV"
+          # Do not fail here: the report step classifies the result and the
+          # final gate fails the job when the session did not pass.
+          exit 0
+
+      - name: Build aggregate report
+        if: always()
+        env:
+          DEVICES: ${{ needs.configuration.outputs.devices }}
+        run: |
+          set -uo pipefail
+          [ -f device-run.log ] || echo "no console log was produced" > device-run.log
+          python3 tools/release_intelligence/cloud_report.py \
+            --log device-run.log \
+            --devices "$DEVICES" \
+            --metadata tools/release_intelligence/device-catalog.json \
+            --repository tanishka1233/HMXPDF \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --commit "$GITHUB_SHA" \
+            --branch "${GITHUB_REF_NAME}" \
+            --apk "app-universal-debug.apk" \
+            --test-apk "app-debug-androidTest.apk" \
+            --started-at "${DDP_STARTED_AT:-}" \
+            --output cloud-device-tests.json \
+            --summary-md cloud-test-summary.md \
+            --merge || true
+          if [ ! -f cloud-device-tests.json ]; then
+            echo "::error title=Report missing::The cloud report could not be generated."
+          fi
+
+      - name: Add report summary
+        if: always()
+        run: |
+          set -uo pipefail
+          if [ -f cloud-test-summary.md ]; then
+            cat cloud-test-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Cloud device tests"
+              echo
+              echo "No report was produced. This is not a pass."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload cloud test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-test-report
+          path: |
+            cloud-device-tests.json
+            device-run.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Fail when cloud tests did not pass
+        if: always()
+        run: |
+          set -euo pipefail
+          status=$(python3 -c 'import json;print(json.load(open("cloud-device-tests.json"))["status"])' 2>/dev/null || echo "missing")
+          echo "Cloud result: $status (submit exit ${DDP_SUBMIT_EXIT:-unknown})"
+          if [ "$status" != "passed" ]; then
+            echo "::error title=Cloud device tests did not pass::Result is '$status'. See the cloud-test-report artifact. This job is not a release blocker until a cloud gate is explicitly enabled."
+            exit 1
+          fi
+
+  publish-report:
+    name: Publish aggregate cloud report
+    needs: [cloud-run, configuration]
+    if: >-
+      always() &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/release/hmxpdf-2.1.1-build' &&
+      (needs.cloud-run.result == 'success' || needs.cloud-run.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download cloud report
+        uses: actions/download-artifact@v4
+        with:
+          name: cloud-test-report
+          path: cloud-report
+
+      - name: Publish report to the dashboard dataset
+        run: |
+          set -euo pipefail
+          if [ ! -f cloud-report/cloud-device-tests.json ]; then
+            echo "No cloud report artifact; nothing to publish."
+            exit 0
+          fi
+          cp cloud-report/cloud-device-tests.json hmxwebsite/data/cloud-device-tests.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hmxwebsite/data/cloud-device-tests.json
+          if git diff --cached --quiet; then
+            echo "Cloud report unchanged."
+            exit 0
+          fi
+          git commit -m "Update cloud device test report [skip ci]"
+          git push
