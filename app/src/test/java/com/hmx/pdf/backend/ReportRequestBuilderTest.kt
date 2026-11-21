@@ -40,11 +40,11 @@ class ReportRequestBuilderTest {
             "device_model", "manufacturer", "imei", "location", "latitude", "longitude",
             "file_uri", "document", "content_uri", "advertising_id", "file_content", "page_text",
         )) {
-            assertFalse("forbidden field present: $forbidden", json.contains(""$forbidden"", ignoreCase = true))
+            assertFalse("forbidden field present: $forbidden", json.contains("\"" + forbidden + "\"", ignoreCase = true))
         }
         val payload = json.substringAfter("\"diagnostic_payload\"")
         for (allowed in listOf("android_api_level", "locale", "error_code", "screen")) {
-            assertTrue("missing allowlisted payload key $allowed", payload.contains(""$allowed""))
+            assertTrue("missing allowlisted payload key $allowed", payload.contains("\"" + allowed + "\""))
         }
     }
 
