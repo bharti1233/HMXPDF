@@ -120,6 +120,7 @@ import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.compose.material.icons.rounded.Layers
 import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.hmx.pdf.backend.BackendConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -233,6 +234,7 @@ fun SettingsScreen(
         PageLicenses -> stringResource(R.string.settings_licenses)
         PageOffice -> stringResource(R.string.office_engine_title)
         PageGlass -> stringResource(R.string.settings_glass)
+        PageDiagnostics -> "Diagnostics (staging)"
         else -> stringResource(R.string.settings_title)
     }
     Box(Modifier.fillMaxSize()) {
@@ -299,6 +301,10 @@ fun SettingsScreen(
                         SettingsNavRow(Icons.Rounded.FolderOpen, LiquidGlassColors.Teal, stringResource(R.string.settings_file_handling), null, ink, sub) { page = PageFiles }
                         SettingsDivider(isLight)
                         SettingsNavRow(Icons.Rounded.Description, LiquidGlassColors.Green, stringResource(R.string.office_engine_title), null, ink, sub) { page = PageOffice }
+                        if (BackendConfig.enabled) {
+                            SettingsDivider(isLight)
+                            SettingsNavRow(Icons.Rounded.FileCopy, LiquidGlassColors.Purple, "Diagnostics (staging)", null, ink, sub) { page = PageDiagnostics }
+                        }
                     }
                     SettingsSection(backdrop, uiSensor, entrance.sectionFade(3), padding = 8.dp, gap = 0.dp) {
                         SettingsNavRow(Icons.Rounded.Info, LiquidGlassColors.Blue, stringResource(R.string.settings_about), versionLabel, ink, sub) { page = PageAbout }
@@ -595,6 +601,11 @@ fun SettingsScreen(
                     BasicText(stringResource(R.string.settings_open_source), style = TextStyle(sub.copy(0.7f), 11.sp, textAlign = TextAlign.Center))
                 }
 
+                if (p == PageDiagnostics) SettingsSection(backdrop, uiSensor, Modifier, padding = 16.dp) {
+                    SettingsSectionHeader(Icons.Rounded.FileCopy, "Diagnostics (staging)", ink)
+                    DiagnosticsSettingsSection()
+                }
+
                 if (p == PageLicenses) SettingsSection(backdrop, uiSensor, Modifier) {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         OpenSourceCredits.forEachIndexed { index, credit ->
@@ -666,6 +677,7 @@ private const val PageAbout = 5
 private const val PageLicenses = 6
 private const val PageOffice = 7
 private const val PageGlass = 8
+private const val PageDiagnostics = 9
 
 /**
  * Settings -> Liquid Glass: kyant's Glass Playground knobs, app-wide. A live preview chip sits over a

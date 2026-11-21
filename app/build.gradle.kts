@@ -47,6 +47,7 @@ val releaseArtifactRequested = gradle.startParameter.taskNames.any { task ->
     val artifactTask = listOf("assemble", "bundle", "package", "install", "publish")
     val flavorAggregate = artifactTask.any { name.startsWith(it) } &&
         !name.contains("debug") &&
+        !name.contains("staging") &&
         !name.contains("test")
     val releaseArtifact = name.contains("release") &&
         !name.contains("test") &&
@@ -90,7 +91,27 @@ android {
     }
 
     buildTypes {
+        // Staging-only build type. It inherits debug's dexing/signing setup but is the
+        // only variant that compiles in the HMXPDF staging backend client. The
+        // production endpoint is not present in any build type's BuildConfig.
+        create("staging") {
+            initWith(getByName("debug"))
+            // initWith copies debug before its ProGuard block runs; restate it so the
+            // staging variant dexes exactly like debug on API 23.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "proguard-debug.pro",
+            )
+            buildConfigField("boolean", "HMX_BACKEND_ENABLED", "true")
+            buildConfigField("String", "HMX_BACKEND_URL", "\"https://hwwnksxfrllkrqonngob.supabase.co/functions/v1\"")
+            buildConfigField("String", "HMX_BACKEND_PUBLISHABLE_KEY", "\"sb_publishable_BKpgc4DhPuIM7H4nQWjK4Q_KtYBBjgq\"")
+        }
         debug {
+            buildConfigField("boolean", "HMX_BACKEND_ENABLED", "false")
+            buildConfigField("String", "HMX_BACKEND_URL", "\"\"")
+            buildConfigField("String", "HMX_BACKEND_PUBLISHABLE_KEY", "\"\"")
             // poi 5.4.1's poifs.nio.CleanerUtil uses MethodHandle.invokeExact, which D8 can
             // only dex on API 26+ — plain-D8 debug dexing aborts assemblePlayDebug with
             // "Increase the minSdkVersion to 26 or above". R8 (already used by release)
@@ -105,6 +126,9 @@ android {
             testProguardFiles("proguard-test-debug.pro")
         }
         release {
+            buildConfigField("boolean", "HMX_BACKEND_ENABLED", "false")
+            buildConfigField("String", "HMX_BACKEND_URL", "\"\"")
+            buildConfigField("String", "HMX_BACKEND_PUBLISHABLE_KEY", "\"\"")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             } else if (releaseArtifactRequested) {
@@ -122,6 +146,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig carries the staging-only backend switch. Generated in every
+        // build type; debug/release always disable the backend client.
+        buildConfig = true
     }
     testOptions {
         // Plain JVM unit tests (the xlsx model/writer). Android stubs return defaults instead of
