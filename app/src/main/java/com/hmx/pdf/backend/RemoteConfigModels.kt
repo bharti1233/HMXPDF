@@ -61,7 +61,10 @@ object RemoteConfigParser {
     }
 
     fun encode(snapshot: RemoteConfigSnapshot): String =
-        json.encodeToString(ConfigEnvelope.serializer(), ConfigEnvelope(snapshot.version, snapshot.config, null))
+        json.encodeToString(
+            ConfigResponse.serializer(),
+            ConfigResponse(ConfigEnvelope(snapshot.version, snapshot.config, null)),
+        )
 }
 
 object FeatureFlags {

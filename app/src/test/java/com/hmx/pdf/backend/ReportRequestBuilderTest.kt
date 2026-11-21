@@ -34,11 +34,17 @@ class ReportRequestBuilderTest {
     @Test
     fun payloadNeverContainsDocumentsOrDeviceIdentity() {
         val json = ReportRequestBuilder.build(draft, "hmx-install-1234", "2.1.1", 21)
+        // Check JSON field names, not substrings of user text: an error_code may
+        // legitimately contain "PDF_OPEN_FAILED" without carrying document content.
         for (forbidden in listOf(
             "device_model", "manufacturer", "imei", "location", "latitude", "longitude",
-            "pdf", "docx", "file_uri", "document", "content_uri", "advertising_id",
+            "file_uri", "document", "content_uri", "advertising_id", "file_content", "page_text",
         )) {
-            assertFalse("forbidden field present: $forbidden", json.contains(forbidden, ignoreCase = true))
+            assertFalse("forbidden field present: $forbidden", json.contains(""$forbidden"", ignoreCase = true))
+        }
+        val payload = json.substringAfter("\"diagnostic_payload\"")
+        for (allowed in listOf("android_api_level", "locale", "error_code", "screen")) {
+            assertTrue("missing allowlisted payload key $allowed", payload.contains(""$allowed""))
         }
     }
 
