@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      verify_staging:
+        description: 'Compile and unit-test the staging backend variant (no signing, no release)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -58,6 +63,42 @@ jobs:
         with:
           name: hmx-pdf-debug-apk
           path: app/build/outputs/apk/play/debug/*.apk
+          if-no-files-found: error
+
+  staging:
+    # Opt-in only. Verifies the staging build type compiles and its unit tests pass
+    # in the cloud. Never signs, never produces a release artifact.
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: JVM unit tests (staging variant)
+        run: >
+          ./gradlew testPlayStagingUnitTest
+          --stacktrace
+          -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8"
+          -Pkotlin.daemon.jvmargs=-Xmx4g
+      - name: Compile staging APK (unsigned)
+        run: >
+          ./gradlew assemblePlayStaging
+          --stacktrace
+          -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8"
+          -Pkotlin.daemon.jvmargs=-Xmx4g
+      - name: Upload staging APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmx-pdf-staging-apk
+          path: app/build/outputs/apk/play/staging/*.apk
           if-no-files-found: error
 
   release:
